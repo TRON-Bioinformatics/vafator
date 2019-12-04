@@ -116,7 +116,12 @@ class Annotator(object):
         """
         return [str(base_counts.get(a, 0)) for a in variant.ALT]
 
+    def _write_batch(self, batch):
+        for v in batch:
+            self.vcf_writer.write_record(v)
+
     def run(self):
+        batch = []
         for variant in self.vcf:
             # gets the counts of all bases across all BAMs
             if self.tumor_bams:
@@ -129,7 +134,15 @@ class Annotator(object):
                 variant.INFO["normal_af"] = ",".join(Annotator._get_af(normal_base_counts, variant))
                 variant.INFO["normal_ac"] = ",".join(Annotator._get_ac(normal_base_counts, variant))
                 variant.INFO["normal_dp"] = str(normal_base_counts.sum())
-            self.vcf_writer.write_record(variant)
+            batch.append(variant)
+            if len(batch) >= 1000:
+                self._write_batch(batch)
+                batch = []
+        if len(batch) > 0:
+            self._write_batch(batch)
 
+        self.vcf_writer.flush()
         self.vcf_writer.close()
         self.vcf.close()
+        for b in self.tumor_bams + self.normal_bams:
+            b.close()
