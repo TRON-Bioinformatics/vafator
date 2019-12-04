@@ -17,9 +17,9 @@ def run():
                                      epilog=epilog)
     parser.add_argument("--input-vcf", dest="input_vcf", action="store", help="The VCF to annotate", required=True)
     parser.add_argument("--output-vcf", dest="output_vcf", action="store", help="The annotated VCF", required=True)
-    parser.add_argument("--normal-bams", dest="normal_bams", nargs='+', action="store",
+    parser.add_argument("--normal-bams", dest="normal_bams", nargs='+', action="store", default=[],
                         help="Whitespace-separated list of normal BAMs to analyse")
-    parser.add_argument("--tumor-bams", dest="tumor_bams", nargs='+', action="store",
+    parser.add_argument("--tumor-bams", dest="tumor_bams", nargs='+', action="store", default=[],
                         help="Whitespace-separated list of tumor BAMs to analyse")
     parser.add_argument("--mapping-quality", dest="mapping_quality", action="store", type=int, default=0,
                         help="All reads with a mapping quality lower or equal than this threshold will be filtered out")

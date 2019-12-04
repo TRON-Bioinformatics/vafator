@@ -141,7 +141,6 @@ class Annotator(object):
         if len(batch) > 0:
             self._write_batch(batch)
 
-        self.vcf_writer.flush()
         self.vcf_writer.close()
         self.vcf.close()
         for b in self.tumor_bams + self.normal_bams:
