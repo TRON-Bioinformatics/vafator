@@ -1,1 +1,5 @@
 venv
+build
+dist
+vafator.egg-info
+**/__pycache__
