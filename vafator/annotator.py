@@ -1,24 +1,20 @@
 import pysam
 from cyvcf2 import VCF, Writer
 import pandas as pd
+import os
+import vafator
+import datetime
+import json
 
 
 class Annotator(object):
 
-    annotations_header = [
-        {'ID': 'normal_af', 'Description': 'Allele frequency for the alternate alleles in the normal sample',
-         'Type': 'Float', 'Number': 'A'},
-        {'ID': 'tumor_af', 'Description': 'Allele frequency for the alternate alleles in the tumor sample',
-         'Type': 'Float', 'Number': 'A'},
-        {'ID': 'normal_ac', 'Description': 'Allele count for the alternate alleles in the normal sample',
-         'Type': 'Integer', 'Number': 'A'},
-        {'ID': 'tumor_ac', 'Description': 'Allele count for the alternate alleles in the tumor sample',
-         'Type': 'Integer', 'Number': 'A'},
-        {'ID': 'normal_dp', 'Description': 'Depth of coverage in the normal sample', 'Type': 'Integer',
-         'Number': '1'},
-        {'ID': 'tumor_dp', 'Description': 'Depth of coverage in the tumor sample', 'Type': 'Integer',
-         'Number': '1'}
-    ]
+    vafator_header = {
+        "name": "vafator",
+        "version": vafator.VERSION,
+        "date": datetime.datetime.now().ctime(),
+        "timestamp": datetime.datetime.now().timestamp(),
+    }
 
     def __init__(self, input_vcf, output_vcf, normal_bams=[], tumor_bams=[],
                  mapping_qual_thr=0, base_call_qual_thr=29):
@@ -33,11 +29,51 @@ class Annotator(object):
         self.mapping_quality_threshold = mapping_qual_thr
         self.base_call_quality_threshold = base_call_qual_thr
         self.vcf = VCF(input_vcf)
-        for a in self.annotations_header:
+        # sets a line in the header with the command used to annotate the file
+        self.vafator_header["input_vcf"] = input_vcf
+        self.vafator_header["output_vcf"] = output_vcf
+        self.vafator_header["normal_bams"] = normal_bams
+        self.vafator_header["tumor_bams"] = tumor_bams
+        self.vafator_header["mapping_quality_threshold"] = mapping_qual_thr
+        self.vafator_header["base_call_quality_threshold"] = base_call_qual_thr
+        self.vcf.add_to_header("##vafator_command_line={}".format(json.dumps(self.vafator_header)))
+        # adds to the header all the names of the annotations
+        for a in Annotator._get_headers("tumor", tumor_bams) + Annotator._get_headers("normal", normal_bams):
             self.vcf.add_info_to_header(a)
         self.vcf_writer = Writer(output_vcf, self.vcf)
-        self.tumor_bams = [pysam.AlignmentFile(b, "rb" ) for b in tumor_bams]
+        self.tumor_bams = [pysam.AlignmentFile(b, "rb") for b in tumor_bams]
         self.normal_bams = [pysam.AlignmentFile(b, "rb") for b in normal_bams]
+
+    @staticmethod
+    def _get_headers(prefix, bams):
+        headers = []
+        if len(bams) > 0:
+            headers = [
+                {'ID': "{}_af".format(prefix),
+                 'Description': "Allele frequency for the alternate alleles in the {} samples".format(prefix),
+                 'Type': 'Float', 'Number': 'A'},
+                {'ID': "{}_dp".format(prefix),
+                 'Description': "Total depth of coverage in the {} samples".format(prefix),
+                 'Type': 'Float', 'Number': 'A'},
+                {'ID': "{}_ac".format(prefix),
+                 'Description': "Allele count for the alternate alleles in the {} samples".format(prefix),
+                 'Type': 'Integer', 'Number': 'A'}
+            ]
+        if len(bams) > 1:
+            for i, b in enumerate(bams, start=1):
+                n = os.path.basename(b).split(".")[0]
+                headers = headers + [
+                    {'ID': "{}_af_{}".format(prefix, i),
+                     'Description': "Allele frequency for the alternate alleles in the {} sample {}".format(prefix, n),
+                     'Type': 'Float', 'Number': 'A'},
+                    {'ID': "{}_dp_{}".format(prefix, i),
+                     'Description': "Depth of coverage in the {} sample {}".format(prefix, n),
+                     'Type': 'Float', 'Number': 'A'},
+                    {'ID': "{}_ac_{}".format(prefix, i),
+                     'Description': "Allele count for the alternate alleles in the {} sample {}".format(prefix, n),
+                     'Type': 'Integer', 'Number': 'A'}
+                ]
+        return headers
 
     @staticmethod
     def _initialize_empty_count(bases_counts, base):
@@ -120,20 +156,26 @@ class Annotator(object):
         for v in batch:
             self.vcf_writer.write_record(v)
 
+    def _add_stats(self, bams,  variant, prefix):
+        base_counts = [self._summarize_pileup(self._get_pileup(variant, b)) for b in bams]
+        aggregated_base_counts = sum(base_counts)
+        variant.INFO["{}_af".format(prefix)] = ",".join(Annotator._get_af(aggregated_base_counts, variant))
+        variant.INFO["{}_ac".format(prefix)] = ",".join(Annotator._get_ac(aggregated_base_counts, variant))
+        variant.INFO["{}_dp".format(prefix)] = str(aggregated_base_counts.sum())
+        if len(base_counts) > 1:
+            for i, c in enumerate(base_counts, start=1):
+                variant.INFO["{}_af_{}".format(prefix, i)] = ",".join(Annotator._get_af(c, variant))
+                variant.INFO["{}_ac_{}".format(prefix, i)] = ",".join(Annotator._get_ac(c, variant))
+                variant.INFO["{}_dp_{}".format(prefix, i)] = str(c.sum())
+
     def run(self):
         batch = []
         for variant in self.vcf:
             # gets the counts of all bases across all BAMs
             if self.tumor_bams:
-                tumor_base_counts = sum([self._summarize_pileup(self._get_pileup(variant, b)) for b in self.tumor_bams])
-                variant.INFO["tumor_af"] = ",".join(Annotator._get_af(tumor_base_counts, variant))
-                variant.INFO["tumor_ac"] = ",".join(Annotator._get_ac(tumor_base_counts, variant))
-                variant.INFO["tumor_dp"] = str(tumor_base_counts.sum())
+                self._add_stats(self.tumor_bams, variant, "tumor")
             if self.normal_bams:
-                normal_base_counts = sum([self._summarize_pileup(self._get_pileup(variant, b)) for b in self.normal_bams])
-                variant.INFO["normal_af"] = ",".join(Annotator._get_af(normal_base_counts, variant))
-                variant.INFO["normal_ac"] = ",".join(Annotator._get_ac(normal_base_counts, variant))
-                variant.INFO["normal_dp"] = str(normal_base_counts.sum())
+                self._add_stats(self.normal_bams, variant, "normal")
             batch.append(variant)
             if len(batch) >= 1000:
                 self._write_batch(batch)

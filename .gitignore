@@ -3,3 +3,5 @@ build
 dist
 vafator.egg-info
 **/__pycache__
+.idea
+venv-win
