@@ -12,7 +12,8 @@ setup(
     packages=find_packages(exclude=["legacy"]),
     entry_points = {
         'console_scripts': [
-            'vafator=vafator.command_line:run'
+            'vafator=vafator.command_line:annotator',
+            'multiallelics-filter=vafator.command_line:multiallelics_filter'
         ],
     },
     author='Pablo Riesgo Ferreiro',

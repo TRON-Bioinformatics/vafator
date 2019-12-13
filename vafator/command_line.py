@@ -4,12 +4,13 @@ import sys
 import logging
 import vafator
 from vafator.annotator import Annotator
+from vafator.multiallelic_filter import MultiallelicFilter
 
 
 epilog = "Copyright (c) 2015-2020 TRON gGmbH (See LICENSE for licensing details)"
 
 
-def run():
+def annotator():
 
     # set up logger
     parser = argparse.ArgumentParser(description="vafator v{}".format(vafator.VERSION),
@@ -42,3 +43,27 @@ def run():
         logging.error(str(e))
         sys.exit(-1)
     logging.info("Vafator finished!")
+
+def multiallelics_filter():
+
+    # set up logger
+    parser = argparse.ArgumentParser(description="vafator v{}".format(vafator.VERSION),
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter, epilog=epilog)
+    parser.add_argument("--input-vcf", dest="input_vcf", action="store", help="The VCF to annotate", required=True)
+    parser.add_argument("--output-vcf", dest="output_vcf", action="store", help="The annotated VCF", required=True)
+    parser.add_argument("--tumor-sample-name", dest="tumor_sample_name", action="store",
+                        help='The tumor sample name (will look for annotation ${SAMPLE_NAME}_af)', default='tumor')
+    args = parser.parse_args()
+
+    logging.info("Vafator multiallelic filter starting...")
+    try:
+        filter = MultiallelicFilter(
+            input_vcf=args.input_vcf,
+            output_vcf=args.output_vcf,
+            tumor_sample_name=args.tumor_sample_name
+        )
+        filter.run()
+    except Exception as e:
+        logging.error(str(e))
+        sys.exit(-1)
+    logging.info("Vafator multiallelic filter finished!")
