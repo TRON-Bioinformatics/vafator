@@ -5,6 +5,7 @@ params.input_files = false
 params.output = false
 params.mapping_quality = false
 params.base_call_quality = false
+params.skip_multiallelic_filter = false
 
 def helpMessage() {
     log.info"""
@@ -55,7 +56,6 @@ if (params.input_files) {
 process vafator {
     cpus 1
     memory '4g'
-    //container 'biocontainers/bcftools'
     module 'anaconda/3/2019'
     tag "${name}"
     publishDir "${publish_dir}/${name}", mode: "copy"
@@ -64,8 +64,8 @@ process vafator {
     	set name, file(vcf), normal_bams, tumor_bams from input_files
 
     output:
-      set val("${name}"), val("${publish_dir}/${name}/${vcf.baseName}.vaf.vcf") into output_files
-      file("${vcf.baseName}.vaf.vcf") into annotated_vcf
+      set val("${name}"), file("${vcf.baseName}.vaf.vcf") into annotated_vcf
+      set val("${name}"), val("${publish_dir}/${name}/${vcf.baseName}.vaf.vcf") into intermediate_output_files
 
     script:
     normal_bams_param = normal_bams?.trim() ? "--normal-bams " + normal_bams.split(",").join(" ") : ""
@@ -73,9 +73,33 @@ process vafator {
     mapping_quality_param = params.mapping_quality ? "--mapping-quality " + params.mapping_quality : ""
     base_call_quality_param = params.base_call_quality ? "--base_call-quality " + params.base_call_quality : ""
     """
-    #source /home/priesgof/src/vafator/venv/bin/activate
     /home/priesgof/src/vafator/venv/bin/vafator --input-vcf ${vcf} --output-vcf ${vcf.baseName}.vaf.vcf ${normal_bams_param} ${tumor_bams_param} ${mapping_quality_param} ${base_call_quality_param}
     """
+}
+
+if (params.skip_multiallelic_filter) {
+    output_files = intermediate_output_files
+}
+else {
+    process multiallelic_filter {
+        cpus 1
+        memory '4g'
+        module 'anaconda/3/2019'
+        tag "${name}"
+        publishDir "${publish_dir}/${name}", mode: "copy"
+
+        input:
+            set name, file(vcf) from annotated_vcf
+
+        output:
+          set val("${name}"), val("${publish_dir}/${name}/${vcf.baseName}.filtered_multiallelics.vcf") into output_files
+          file("${vcf.baseName}.filtered_multiallelics.vcf") into annotated_vcf
+
+        script:
+        """
+        /home/priesgof/src/vafator/venv/bin/multiallelic-filter --input-vcf ${vcf} --output-vcf ${vcf.baseName}.filtered_multiallelics.vcf
+        """
+    }
 }
 
 output_files
