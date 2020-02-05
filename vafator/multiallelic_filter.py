@@ -40,7 +40,9 @@ class MultiallelicFilter(object):
                 # first time stores the variant and moves on
                 prev_variant = variant
                 continue
-            if variant.is_snp and variant.CHROM == prev_variant.CHROM and variant.POS == prev_variant.POS:
+            # considers only SNVs with same chromosome, position and reference
+            if variant.is_snp and variant.CHROM == prev_variant.CHROM and variant.POS == prev_variant.POS and \
+                    variant.REF == prev_variant.REF:
                 af1 = self.get_tumor_af(prev_variant)
                 af2 = self.get_tumor_af(variant)
                 # keeps the variant with the highest AF
@@ -64,15 +66,16 @@ class MultiallelicFilter(object):
             if len(batch) >= 1000:
                 self._write_batch(batch)
                 batch = []
-        if len(batch) > 0:
-            self._write_batch(batch)
+        # do not forget to add the last variant!
+        batch.append(prev_variant)
+        self._write_batch(batch)
 
         self.vcf_writer.close()
         self.vcf.close()
 
     def set_multiallelic_annotation(self, variant, alt, af):
         variant.INFO[self.multiallelic_annotation_name] = \
-            ",".join(variant.INFO.get(self.multiallelic_annotation_name, []) + [alt, str(af)])
+            ",".join(variant.INFO.get(self.multiallelic_annotation_name, "").split(",") + [alt, str(af)])
 
     def get_tumor_af(self, prev_variant):
         return prev_variant.INFO.get("{}_af".format(self.tumor_sample_name), 0.0)
