@@ -1,0 +1,23 @@
+##fileformat=VCFv4.2
+##contig=<ID=chr1,length=249250621>
+##contig=<ID=chr2,length=243199373>
+##contig=<ID=chr3,length=198022430>
+##contig=<ID=chr4,length=191154276>
+##contig=<ID=chr5,length=180915260>
+##contig=<ID=chr6,length=171115067>
+##FILTER=<ID=PASS,Description="All filters passed">
+##INFO=<ID=tumor_af,Number=1,Type=String,Description="">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	tumor
+chr1	25734793	.	C	T	.	PASS	.	GT	0/1
+chr1	37323930	.	C	T	.	PASS	.	GT	0/1
+chr2	1234	.	C	T	.	PASS	.	GT	0/1
+chr2	1235	.	C	T	.	PASS	.	GT	0/1
+chr3	1234	.	C	T	.	PASS	.	GT	0/1
+chr4	1234	.	C	T	.	PASS	.	GT	0/1
+chr4	1235	.	C	T	.	PASS	.	GT	0/1
+chr4	1236	.	C	T	.	PASS	.	GT	0/1
+chr5	1234	.	C	T	.	PASS	.	GT	0/1
+chr6	1234	.	C	T	.	PASS	.	GT	0/1
+chr6	1235	.	C	T	.	PASS	.	GT	0/1
+chr6	1236	.	C	T	.	PASS	.	GT	0/1
