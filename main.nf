@@ -26,6 +26,9 @@ Input:
 
 Optional input:
     * output: the folder where to publish output
+    * skip_multiallelic_filter: skip the filtering of multiallelics by frequency in the tumor (only highest frequency variant at the same position is kept)
+    * base_call_quality: threshold for the base call quality, only base calls with a higher value are considered (default: 29)
+    * mapping_quality: threshold for the mapping quality, only reads with a higher value are considered (default: 0)
 
 Output:
     * Annotated VCF file
@@ -93,11 +96,11 @@ else {
 
         output:
           set val("${name}"), val("${publish_dir}/${name}/${vcf.baseName}.filtered_multiallelics.vcf") into output_files
-          file("${vcf.baseName}.filtered_multiallelics.vcf") into annotated_vcf
+          file("${vcf.baseName}.filtered_multiallelics.vcf") into filtered_vcf
 
         script:
         """
-        /home/priesgof/src/vafator/venv/bin/multiallelic-filter --input-vcf ${vcf} --output-vcf ${vcf.baseName}.filtered_multiallelics.vcf
+        /home/priesgof/src/vafator/venv/bin/multiallelics-filter --input-vcf ${vcf} --output-vcf ${vcf.baseName}.filtered_multiallelics.vcf
         """
     }
 }
