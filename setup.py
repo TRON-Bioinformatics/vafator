@@ -17,7 +17,7 @@ setup(
     name='vafator',
     version=VERSION,
     packages=find_packages(exclude=["legacy"]),
-    entry_points = {
+    entry_points={
         'console_scripts': [
             'vafator=vafator.command_line:annotator',
             'multiallelics-filter=vafator.command_line:multiallelics_filter'
@@ -37,7 +37,13 @@ setup(
         'Intended Audience :: Healthcare Industry',
         'Intended Audience :: Science/Research',
         'Topic :: Scientific/Engineering :: Bio-Informatics',
-        'Programming Language :: Python :: 3.8'
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9'
+        "Programming Language :: Python :: 3 :: Only",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: Unix"
       ],
+    python_requires='>=3.7',
     license='MIT'
 )
