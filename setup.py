@@ -9,6 +9,9 @@ VERSION = vafator.VERSION
 with open("requirements.txt") as f:
     required = f.read().splitlines()
 
+with open("README.md", "r", encoding="utf-8") as f:
+    long_description = f.read()
+
 # Build the Python package
 setup(
     name='vafator',
@@ -20,9 +23,13 @@ setup(
             'multiallelics-filter=vafator.command_line:multiallelics_filter'
         ],
     },
-    author='Pablo Riesgo Ferreiro',
+    author="TRON - Translational Oncology at the University Medical Center of the Johannes Gutenberg University Mainz"
+    "- Computational Medicine group",
     author_email='pablo.riesgoferreiro@tron-mainz.de',
-    description='Annotate a VCF with AF, AD and DP from tumor and normal BAMs',
+    description='Annotate a VCF file with AF, AD and DP from tumor and normal BAMs',
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://github.com/tron-bioinformatics/vafator",
     requires=[],
     install_requires=required,
     classifiers=[
@@ -31,5 +38,6 @@ setup(
         'Intended Audience :: Science/Research',
         'Topic :: Scientific/Engineering :: Bio-Informatics',
         'Programming Language :: Python :: 3.8'
-      ]
+      ],
+    license='MIT'
 )
