@@ -37,6 +37,7 @@ class Annotator(object):
         self.vafator_header["tumor_bams"] = tumor_bams
         self.vafator_header["mapping_quality_threshold"] = mapping_qual_thr
         self.vafator_header["base_call_quality_threshold"] = base_call_qual_thr
+        self.vafator_header["prefix"] = prefix
         self.vcf.add_to_header("##vafator_command_line={}".format(json.dumps(self.vafator_header)))
         # adds to the header all the names of the annotations
         self.tumor_prefix = "{prefix}_tumor".format(prefix=prefix) if prefix is not None else "tumor"
