@@ -8,7 +8,7 @@
 ##contig=<ID=chr6,length=171115067>
 ##INFO=<ID=tumor_af,Number=1,Type=String,Description="">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
-##vafator_command_line={"name": "multiallelic-filter", "version": "0.2.2", "date": "Thu Sep 30 22:02:41 2021", "timestamp": 1633032161.547325, "input_vcf": "/home/priesgo/src/github/vafator/vafator/tests/resources/test4.vcf", "output_vcf": "/home/priesgo/src/github/vafator/vafator/tests/resources/results/test4_output.vcf"}
+##vafator_command_line={"name": "multiallelic-filter", "version": "0.3.1", "date": "Thu Oct  7 22:21:54 2021", "timestamp": 1633638114.027123, "input_vcf": "/home/priesgo/src/github/vafator/vafator/tests/resources/test4.vcf", "output_vcf": "/home/priesgo/src/github/vafator/vafator/tests/resources/results/test4_output.vcf"}
 ##INFO=<ID=multiallelic,Number=.,Type=String,Description="Indicates multiallelic variants filtered and their frequencies if any (e.g.: T,0.12)">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	tumor
 chr4	1235	.	C	A	.	PASS	tumor_af=0.2;multiallelic=,G,0.15	GT	0/1
