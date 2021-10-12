@@ -8,7 +8,7 @@
 ##contig=<ID=chr6,length=171115067>
 ##INFO=<ID=tumor_af,Number=1,Type=String,Description="">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
-##vafator_command_line={"name": "vafator", "version": "0.2.2", "date": "Thu Sep 30 22:02:41 2021", "timestamp": 1633032161.544774, "input_vcf": "/home/priesgo/src/github/vafator/vafator/tests/resources/test1.vcf", "output_vcf": "/home/priesgo/src/github/vafator/vafator/tests/resources/results/test_annotator1_output.vcf", "normal_bams": ["/home/priesgo/src/github/vafator/vafator/tests/resources/COLO_829_n1.bam"], "tumor_bams": ["/home/priesgo/src/github/vafator/vafator/tests/resources/COLO_829_t1.bam"], "mapping_quality_threshold": 0, "base_call_quality_threshold": 29}
+##vafator_command_line={"name": "vafator", "version": "0.3.1", "date": "Thu Oct  7 22:21:54 2021", "timestamp": 1633638114.026383, "input_vcf": "/home/priesgo/src/github/vafator/vafator/tests/resources/test1.vcf", "output_vcf": "/home/priesgo/src/github/vafator/vafator/tests/resources/results/test_annotator1_output.vcf", "normal_bams": ["/home/priesgo/src/github/vafator/vafator/tests/resources/COLO_829_n1.bam"], "tumor_bams": ["/home/priesgo/src/github/vafator/vafator/tests/resources/COLO_829_t1.bam"], "mapping_quality_threshold": 0, "base_call_quality_threshold": 29}
 ##INFO=<ID=tumor_dp,Number=A,Type=Float,Description="Total depth of coverage in the tumor samples">
 ##INFO=<ID=tumor_ac,Number=A,Type=Integer,Description="Allele count for the alternate alleles in the tumor samples">
 ##INFO=<ID=normal_af,Number=A,Type=Float,Description="Allele frequency for the alternate alleles in the normal samples">

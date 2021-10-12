@@ -1,0 +1,2 @@
+sample1	test_data/test_tumor_normal.vcf	test_data/TESTX_S1_L001.bam	test_data/TESTX_S1_L002.bam
+sample2	test_data/test_single_sample.vcf	test_data/TESTX_S1_L001.bam,test_data/TESTX_S1_L002.bam	test_data/TESTX_S1_L001.bam,test_data/TESTX_S1_L002.bam

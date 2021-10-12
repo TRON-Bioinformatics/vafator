@@ -1,0 +1,39 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=PASS,Description="Accept as a confident somatic mutation">
+##FILTER=<ID=NOT_PASSED,Description="whatever">
+##FILTER=<ID=MULTIALLELIC,Description="whatever">
+##FILTER=<ID=UNTRIMMED,Description="whatever">
+##FILTER=<ID=UNALIGNED,Description="whatever">
+##FILTER=<ID=UNALIGNED-UNTRIMMED,Description="whatever">
+##FILTER=<ID=MNV,Description="whatever">
+##FILTER=<ID=MNV-INDEL,Description="whatever">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##contig=<ID=chr1,length=249250621,assembly=hg19>
+##contig=<ID=chr2,length=243199373,assembly=hg19>
+##contig=<ID=chr3,length=198022430,assembly=hg19>
+##contig=<ID=chr4,length=191154276,assembly=hg19>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	tumor
+chr1	13082	.	C	A	.	NOT_PASSED		GT:AD	0/1:76,1
+chr1	13081	.	A	C	.	NOT_PASSED		GT:AD	0/1:37,1
+chr1	13202	.	A	G	.	NOT_PASSED		GT:AD	0/1:107,26
+chr1	13201	.	T	G	.	NOT_PASSED		GT:AD	0/1:35,3
+chr1	13201	.	T	C	.	PASS		GT:AD	0/1:196,24
+chr1	13263	.	T	C	.	PASS		GT:AD	0/1:136,31
+chr1	13083	.	A	C	.	PASS		GT:AD	0/1:260,18
+chr1	13263	.	TCC	CCC	.	UNTRIMMED		GT:AD	0/1:136,31
+chr1	13083	.	AGA	AGC	.	UNTRIMMED		GT:AD	0/1:260,18
+chr1	13141	.	C	AAAAAC	.	UNALIGNED		GT:AD	0/1:76,14
+chr1	13141	.	CT	AAAAACT	.	UNALIGNED-UNTRIMMED		GT:AD	0/1:76,14
+chr1	13141	.	CTGAGG	G	.	UNALIGNED		GT:AD	0/1:76,14
+chr1	13141	.	CTGAGG	GG	.	UNALIGNED-UNTRIMMED		GT:AD	0/1:76,14
+chr1	13081	.	ACAG	CCAC	.	MNV		GT:AD	0/1:76,14
+chr1	13141	.	CTGAGG	ATGAGT	.	MNV		GT:AD	0/1:37,5
+chr1	13201	.	TAGCCT	GAGCCC	.	MNV		GT:AD	0/1:107,26
+chr1	13261	.	GCTCCT	CCCCCC	.	MNV		GT:AD	0/1:35,3
+chr1	13321	.	AGCCCT	CGCC	.	MNV-INDEL		GT:AD	0/1:196,24
+chr1	13081	.	ACA	GCAAAAA	.	MNV-INDEL		GT:AD	0/1:196,24
+chr1	13204	.	C	G,T	.	MULTIALLELIC		GT:AD	0/1:196,24,1
+chr1	13324	.	C	G,T	.	MULTIALLELIC		GT:AD	1/2:196,24,1
+chr1	13262	.	C	G,T,A	.	MULTIALLELIC		GT:AD	2/3:196,24,1,1
+chr1	13323	.	C	A,G,T	.	MULTIALLELIC		GT:AD	2/3:196,24,1,1

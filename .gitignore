@@ -5,3 +5,8 @@ vafator.egg-info
 **/__pycache__
 .idea
 venv-win
+.nextflow.log*
+work/
+output/
+.nextflow/
+.tox/
