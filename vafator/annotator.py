@@ -17,7 +17,7 @@ class Annotator(object):
     }
 
     def __init__(self, input_vcf, output_vcf, normal_bams=[], tumor_bams=[],
-                 mapping_qual_thr=0, base_call_qual_thr=29):
+                 mapping_qual_thr=0, base_call_qual_thr=29, prefix=None):
         """
         :param input_vcf: the input VCF file
         :param normal_bams: none or many normal BAM files
@@ -25,6 +25,7 @@ class Annotator(object):
         :param output_vcf: the file path of the output VCF
         :param mapping_qual_thr: reads with a mapping quality lower or equal than this threshold will be filtered out
         :param base_call_qual_thr: bases with a basecall quality lower than or equal this threshold will be filtered out
+        :params prefix: prefix for the annotations
         """
         self.mapping_quality_threshold = mapping_qual_thr
         self.base_call_quality_threshold = base_call_qual_thr
@@ -38,7 +39,10 @@ class Annotator(object):
         self.vafator_header["base_call_quality_threshold"] = base_call_qual_thr
         self.vcf.add_to_header("##vafator_command_line={}".format(json.dumps(self.vafator_header)))
         # adds to the header all the names of the annotations
-        for a in Annotator._get_headers("tumor", tumor_bams) + Annotator._get_headers("normal", normal_bams):
+        self.tumor_prefix = "{prefix}_tumor".format(prefix=prefix) if prefix is not None else "tumor"
+        self.normal_prefix = "{prefix}_normal".format(prefix=prefix) if prefix is not None else "normal"
+        for a in Annotator._get_headers(self.tumor_prefix, tumor_bams) + \
+                 Annotator._get_headers(self.normal_prefix, normal_bams):
             self.vcf.add_info_to_header(a)
         self.vcf_writer = Writer(output_vcf, self.vcf)
         self.tumor_bams = [pysam.AlignmentFile(b, "rb") for b in tumor_bams]
@@ -173,9 +177,9 @@ class Annotator(object):
         for variant in self.vcf:
             # gets the counts of all bases across all BAMs
             if self.tumor_bams:
-                self._add_stats(self.tumor_bams, variant, "tumor")
+                self._add_stats(self.tumor_bams, variant, self.tumor_prefix)
             if self.normal_bams:
-                self._add_stats(self.normal_bams, variant, "normal")
+                self._add_stats(self.normal_bams, variant, self.normal_prefix)
             batch.append(variant)
             if len(batch) >= 1000:
                 self._write_batch(batch)

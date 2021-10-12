@@ -37,10 +37,13 @@ process vafator {
     script:
     normal_bams_param = normal_bams?.trim() ? "--normal-bams " + normal_bams.split(",").join(" ") : ""
     tumor_bams_param = tumor_bams?.trim() ? "--tumor-bams " + tumor_bams.split(",").join(" ") : ""
-    mapping_quality_param = params.mapping_quality ? "--mapping-quality " + params.mapping_quality : ""
-    base_call_quality_param = params.base_call_quality ? "--base-call-quality " + params.base_call_quality : ""
+    mq_param = params.mapping_quality ? "--mapping-quality " + params.mapping_quality : ""
+    bq_param = params.base_call_quality ? "--base-call-quality " + params.base_call_quality : ""
+    prefix_param = params.prefix ? "--prefix " + params.prefix : ""
     """
-    vafator --input-vcf ${vcf} --output-vcf ${vcf.baseName}.vaf.vcf ${normal_bams_param} ${tumor_bams_param} ${mapping_quality_param} ${base_call_quality_param}
+    vafator \
+    --input-vcf ${vcf} \
+    --output-vcf ${vcf.baseName}.vaf.vcf ${normal_bams_param} ${tumor_bams_param} ${mq_param} ${bq_param} ${prefix}
     """
 }
 
