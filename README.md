@@ -1,7 +1,8 @@
 # VAFator
 
 [![PyPI version](https://badge.fury.io/py/vafator.svg)](https://badge.fury.io/py/vafator)
-[![Run unit tests](https://github.com/TRON-Bioinformatics/vafator/actions/workflows/unit_tests.yml/badge.svg?branch=main)](https://github.com/TRON-Bioinformatics/vafator/actions/workflows/unit_tests.yml)
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/vafator/badges/version.svg)](https://anaconda.org/bioconda/vafator)
+[![Run unit tests](https://github.com/TRON-Bioinformatics/vafator/actions/workflows/unit_tests.yml/badge.svg?branch=master)](https://github.com/TRON-Bioinformatics/vafator/actions/workflows/unit_tests.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
 
 Annotate the variants in a VCF file with allele frequencies, allele counts and depth of coverage for alternate alleles 
