@@ -7,7 +7,7 @@ from vafator.annotator import Annotator
 from vafator.multiallelic_filter import MultiallelicFilter
 
 
-epilog = "Copyright (c) 2015-2020 TRON gGmbH (See LICENSE for licensing details)"
+epilog = "Copyright (c) 2019-2021 TRON gGmbH (See LICENSE for licensing details)"
 
 
 def annotator():
@@ -26,6 +26,9 @@ def annotator():
                         help="All reads with a mapping quality lower or equal than this threshold will be filtered out")
     parser.add_argument("--base-call-quality", dest="base_call_quality", action="store", type=int, default=29,
                         help="All bases with a base call quality lower or equal than this threshold will be filtered out")
+    parser.add_argument("--prefix", dest="prefix", action="store", type=str, default=None,
+                        help="When provided the annotations are preceded by this prefix, otherwise the annotations"
+                             "are named as tumor_af, normal_af, tumor_ac, normal_ac, tumor_dp and normal_dp")
 
     args = parser.parse_args()
 
@@ -37,7 +40,9 @@ def annotator():
             normal_bams=args.normal_bams,
             tumor_bams=args.tumor_bams,
             mapping_qual_thr=args.mapping_quality,
-            base_call_qual_thr=args.base_call_quality)
+            base_call_qual_thr=args.base_call_quality,
+            prefix=args.prefix
+        )
         annotator.run()
     except Exception as e:
         logging.error(str(e))

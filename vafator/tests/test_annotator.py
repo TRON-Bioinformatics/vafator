@@ -21,6 +21,71 @@ class TestAnnotator(TestCase):
         n_variants_output = test_utils._get_count_variants(output_vcf)
         self.assertTrue(n_variants_input == n_variants_output)
 
+        info_annotations = test_utils._get_info_fields(output_vcf)
+        self.assertTrue("tumor_af" in info_annotations)
+        self.assertTrue("normal_af" in info_annotations)
+        self.assertTrue("tumor_ac" in info_annotations)
+        self.assertTrue("normal_ac" in info_annotations)
+        self.assertTrue("tumor_dp" in info_annotations)
+        self.assertTrue("normal_dp" in info_annotations)
+
+    def test_annotator_with_multiple_bams(self):
+        input_file = pkg_resources.resource_filename(__name__, "resources/test1.vcf")
+        output_vcf = pkg_resources.resource_filename(__name__, "resources/results/test_annotator1_output.vcf")
+        bam1 = pkg_resources.resource_filename(__name__, "resources/COLO_829_n1.bam")
+        bam2 = pkg_resources.resource_filename(__name__, "resources/COLO_829_t1.bam")
+        annotator = Annotator(
+            input_vcf=input_file, output_vcf=output_vcf, normal_bams=[bam1, bam2], tumor_bams=[bam1, bam2])
+        annotator.run()
+
+        self.assertTrue(os.path.exists(output_vcf))
+        n_variants_input = test_utils._get_count_variants(input_file)
+        n_variants_output = test_utils._get_count_variants(output_vcf)
+        self.assertTrue(n_variants_input == n_variants_output)
+
+        info_annotations = test_utils._get_info_fields(output_vcf)
+        self.assertTrue("tumor_af_1" in info_annotations)
+        self.assertTrue("normal_af_1" in info_annotations)
+        self.assertTrue("tumor_ac_1" in info_annotations)
+        self.assertTrue("normal_ac_1" in info_annotations)
+        self.assertTrue("tumor_dp_1" in info_annotations)
+        self.assertTrue("normal_dp_1" in info_annotations)
+        self.assertTrue("tumor_af_2" in info_annotations)
+        self.assertTrue("normal_af_2" in info_annotations)
+        self.assertTrue("tumor_ac_2" in info_annotations)
+        self.assertTrue("normal_ac_2" in info_annotations)
+        self.assertTrue("tumor_dp_2" in info_annotations)
+        self.assertTrue("normal_dp_2" in info_annotations)
+
+    def test_annotator_with_prefix(self):
+        input_file = pkg_resources.resource_filename(__name__, "resources/test1.vcf")
+        output_vcf = pkg_resources.resource_filename(__name__, "resources/results/test_annotator1_output.vcf")
+        bam1 = pkg_resources.resource_filename(__name__, "resources/COLO_829_n1.bam")
+        bam2 = pkg_resources.resource_filename(__name__, "resources/COLO_829_t1.bam")
+        annotator = Annotator(
+            input_vcf=input_file, output_vcf=output_vcf, normal_bams=[bam1, bam2], tumor_bams=[bam1, bam2],
+            prefix="RNA")
+        annotator.run()
+
+        self.assertTrue(os.path.exists(output_vcf))
+        n_variants_input = test_utils._get_count_variants(input_file)
+        n_variants_output = test_utils._get_count_variants(output_vcf)
+        self.assertTrue(n_variants_input == n_variants_output)
+
+        info_annotations = test_utils._get_info_fields(output_vcf)
+        self.assertTrue("RNA_tumor_af_1" in info_annotations)
+        self.assertTrue("RNA_normal_af_1" in info_annotations)
+        self.assertTrue("RNA_tumor_ac_1" in info_annotations)
+        self.assertTrue("RNA_normal_ac_1" in info_annotations)
+        self.assertTrue("RNA_tumor_dp_1" in info_annotations)
+        self.assertTrue("RNA_normal_dp_1" in info_annotations)
+        self.assertTrue("RNA_tumor_af_2" in info_annotations)
+        self.assertTrue("RNA_normal_af_2" in info_annotations)
+        self.assertTrue("RNA_tumor_ac_2" in info_annotations)
+        self.assertTrue("RNA_normal_ac_2" in info_annotations)
+        self.assertTrue("RNA_tumor_dp_2" in info_annotations)
+        self.assertTrue("RNA_normal_dp_2" in info_annotations)
+
     def _get_info_at(self, input_file, chromosome, position, annotation):
         vcf = VCF(input_file)
         self.assertIsNotNone(vcf)
