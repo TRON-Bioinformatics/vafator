@@ -7,7 +7,7 @@ from vafator.annotator import Annotator
 from vafator.multiallelic_filter import MultiallelicFilter
 
 
-epilog = "Copyright (c) 2015-2020 TRON gGmbH (See LICENSE for licensing details)"
+epilog = "Copyright (c) 2019-2021 TRON gGmbH (See LICENSE for licensing details)"
 
 
 def annotator():
