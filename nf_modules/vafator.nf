@@ -20,8 +20,8 @@ process VAFATOR {
     tuple val("${name}"), file("${vcf.baseName}.vaf.vcf"), emit: annotated_vcf
 
     script:
-    normal_bams_param = params.normal_bams?.trim() ? "--normal-bams " + params.normal_bams.split(",").join(" ") : ""
-    tumor_bams_param = params.tumor_bams?.trim() ? "--tumor-bams " + params.tumor_bams.split(",").join(" ") : ""
+    normal_bams_param = normal_bams?.trim() ? "--normal-bams " + normal_bams.split(",").join(" ") : ""
+    tumor_bams_param = tumor_bams?.trim() ? "--tumor-bams " + tumor_bams.split(",").join(" ") : ""
     mq_param = params.mapping_quality ? "--mapping-quality " + params.mapping_quality : ""
     bq_param = params.base_call_quality ? "--base-call-quality " + params.base_call_quality : ""
     prefix_param = params.prefix ? "--prefix " + params.prefix : ""
