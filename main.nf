@@ -23,8 +23,8 @@ if (params.help) {
 if (params.input_files) {
   Channel
     .fromPath(params.input_files)
-    .splitCsv(header: ['name', 'vcf', 'normal_bams', 'tumor_bams'], sep: "\t")
-    .map{ row-> tuple(row.name, file(row.vcf), row.normal_bams, row.tumor_bams) }
+    .splitCsv(header: ['name', 'vcf', 'tumor_bams', 'normal_bams'], sep: "\t")
+    .map{ row-> tuple(row.name, file(row.vcf), row.tumor_bams, row.normal_bams) }
     .set { input_files }
 } else {
   exit 1, "Input file not specified!"
