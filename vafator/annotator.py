@@ -6,7 +6,7 @@ import pandas as pd
 import os
 
 from pandas import DataFrame, Series
-from pysam import AlignmentFile
+from pysam import AlignmentFile, PileupColumn
 
 import vafator
 import datetime
@@ -106,17 +106,12 @@ class Annotator(object):
         bases_counts = Annotator._initialize_empty_count(bases_counts, 'N')
         return bases_counts
 
-    def _get_pileup(self, variant: Variant, bam: AlignmentFile) -> DataFrame:
-
-        chromosome = variant.CHROM
-        position = variant.POS
-        # this function returns the pileups at all positions covered by reads covered the queried position
-        # approximately +- read size bp
-        pileups = bam.pileup(contig=chromosome, start=position-1, stop=position, truncate=True)
+    def _parse_pileup(self, pileups):
         try:
             pileup = next(pileups)
         except StopIteration:
-            # no reads
+            pileup = None
+        if pileup is None:
             return pd.DataFrame({
                 'bases': [],
                 'base_call_qualities': [],
@@ -127,6 +122,15 @@ class Annotator(object):
             'base_call_qualities': pileup.get_query_qualities(),
             'mapping_qualities': pileup.get_mapping_qualities()
         })
+
+    def _get_variant_pileup(self, variant: Variant, bam: AlignmentFile):
+
+        chromosome = variant.CHROM
+        position = variant.POS
+        # this function returns the pileups at all positions covered by reads covered the queried position
+        # approximately +- read size bp
+        return bam.pileup(contig=chromosome, start=position-1, stop=position, truncate=True)
+
 
     @staticmethod
     def _get_af(base_counts: Series, variant: Variant) -> List:
@@ -145,7 +149,7 @@ class Annotator(object):
 
     def _add_snv_stats(self, bams: List[AlignmentFile], variant: Variant, prefix: str):
 
-        base_counts = [self._summarize_pileup(self._get_pileup(variant, b)) for b in bams]
+        base_counts = [self._summarize_pileup(self._parse_pileup(self._get_variant_pileup(variant, b))) for b in bams]
         aggregated_base_counts = sum(base_counts)
         variant.INFO["{}_af".format(prefix)] = ",".join(Annotator._get_af(aggregated_base_counts, variant))
         variant.INFO["{}_ac".format(prefix)] = ",".join(Annotator._get_ac(aggregated_base_counts, variant))
@@ -158,13 +162,12 @@ class Annotator(object):
 
     def _add_insertion_stats(self, bams: List[AlignmentFile], variant: Variant, prefix: str):
 
-        chromosome = variant.CHROM
         position = variant.POS
-        length = len(variant.ALT[0]) - len(variant.REF)
+        insertion_length = len(variant.ALT[0]) - len(variant.REF)
         global_dp = 0
         global_ac = 0
         for i, b in enumerate(bams):
-            pileups = b.pileup(contig=chromosome, start=position - 1, stop=position, truncate=True)
+            pileups = self._get_variant_pileup(variant=variant, bam=b)
             try:
                 pileup = next(pileups)
                 dp = 0
@@ -180,9 +183,9 @@ class Annotator(object):
                                 if start > position:
                                     break
                             elif cigar_type == 1:    # does not count I
-                                if start == position and cigar_length == length:
+                                if start == position and cigar_length == insertion_length:
                                     ac += 1
-                af = float(ac) / dp if dp > 0 else 0.0
+                af = self._calculate_af(ac, dp)
                 if len(bams) > 1:
                     variant.INFO["{}_af_{}".format(prefix, i+1)] = af
                     variant.INFO["{}_ac_{}".format(prefix, i+1)] = ac
@@ -193,20 +196,22 @@ class Annotator(object):
                 # no reads
                 pass
 
-        global_af = float(global_ac) / global_dp if global_dp > 0 else 0.0
+        global_af = self._calculate_af(global_ac, global_dp)
         variant.INFO["{}_af".format(prefix)] = global_af
         variant.INFO["{}_ac".format(prefix)] = global_ac
         variant.INFO["{}_dp".format(prefix)] = global_dp
 
+    def _calculate_af(self, ac, dp):
+        return float(ac) / dp if dp > 0 else 0.0
+
     def _add_deletion_stats(self, bams: List[AlignmentFile], variant: Variant, prefix: str):
 
-        chromosome = variant.CHROM
         position = variant.POS
-        cigar_length = len(variant.REF) - len(variant.ALT[0])
+        deletion_length = len(variant.REF) - len(variant.ALT[0])
         global_dp = 0
         global_ac = 0
         for i, b in enumerate(bams):
-            pileups = b.pileup(contig=chromosome, start=position - 1, stop=position, truncate=True)
+            pileups = self._get_variant_pileup(variant=variant, bam=b)
             try:
                 pileup = next(pileups)
                 dp = 0
@@ -220,13 +225,13 @@ class Annotator(object):
                             if cigar_type in [0, 3, 7, 8]:  # consumes reference M, N, =, X
                                 start += cigar_length
                             elif cigar_type == 2:   # D
-                                if start == position and cigar_length == cigar_length:
+                                if start == position and cigar_length == deletion_length:
                                     ac += 1
                                 else:
                                     start += cigar_length
                             if start > position:
                                 break
-                af = float(ac) / dp if dp > 0 else 0.0
+                af = self._calculate_af(ac, dp)
                 if len(bams) > 1:
                     variant.INFO["{}_af_{}".format(prefix, i+1)] = af
                     variant.INFO["{}_ac_{}".format(prefix, i+1)] = ac
@@ -234,10 +239,10 @@ class Annotator(object):
                 global_ac += ac
                 global_dp += dp
             except StopIteration:
-                # no supporting reads
+                # no reads
                 pass
 
-        global_af = float(global_ac) / global_dp if global_dp > 0 else 0.0
+        global_af = self._calculate_af(global_ac, global_dp)
         variant.INFO["{}_af".format(prefix)] = global_af
         variant.INFO["{}_ac".format(prefix)] = global_ac
         variant.INFO["{}_dp".format(prefix)] = global_dp
