@@ -1,5 +1,5 @@
 import pysam
-from cyvcf2 import VCF, Writer
+from cyvcf2 import VCF, Writer, Variant
 import pandas as pd
 import os
 import vafator
@@ -161,7 +161,7 @@ class Annotator(object):
         for v in batch:
             self.vcf_writer.write_record(v)
 
-    def _add_stats(self, bams,  variant, prefix):
+    def _add_snv_stats(self, bams, variant, prefix):
         base_counts = [self._summarize_pileup(self._get_pileup(variant, b)) for b in bams]
         aggregated_base_counts = sum(base_counts)
         variant.INFO["{}_af".format(prefix)] = ",".join(Annotator._get_af(aggregated_base_counts, variant))
@@ -175,12 +175,15 @@ class Annotator(object):
 
     def run(self):
         batch = []
+        variant: Variant
         for variant in self.vcf:
             # gets the counts of all bases across all BAMs
             if self.tumor_bams:
-                self._add_stats(self.tumor_bams, variant, self.tumor_prefix)
+                if variant.is_snp:
+                    self._add_snv_stats(self.tumor_bams, variant, self.tumor_prefix)
             if self.normal_bams:
-                self._add_stats(self.normal_bams, variant, self.normal_prefix)
+                if variant.is_snp:
+                    self._add_snv_stats(self.normal_bams, variant, self.normal_prefix)
             batch.append(variant)
             if len(batch) >= 1000:
                 self._write_batch(batch)
