@@ -112,18 +112,16 @@ class Annotator(object):
         position = variant.POS
         # this function returns the pileups at all positions covered by reads covered the queried position
         # approximately +- read size bp
-        pileups = bam.pileup(contig=chromosome, start=position-1, stop=position)
-        pileup_position = -1
-        while pileup_position + 1 != position:
-            try:
-                pileup = next(pileups)
-            except StopIteration:
-                return pd.DataFrame({
-                    'bases': [],
-                    'base_call_qualities': [],
-                    'mapping_qualities': []
-                })
-            pileup_position = pileup.pos
+        pileups = bam.pileup(contig=chromosome, start=position-1, stop=position, truncate=True)
+        try:
+            pileup = next(pileups)
+        except StopIteration:
+            # no reads
+            return pd.DataFrame({
+                'bases': [],
+                'base_call_qualities': [],
+                'mapping_qualities': []
+            })
         return pd.DataFrame({
             'bases': pileup.get_query_sequences(),
             'base_call_qualities': pileup.get_query_qualities(),
