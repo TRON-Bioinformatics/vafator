@@ -1,7 +1,13 @@
+from typing import List
+
 import pysam
 from cyvcf2 import VCF, Writer, Variant
 import pandas as pd
 import os
+
+from pandas import DataFrame, Series
+from pysam import AlignmentFile
+
 import vafator
 import datetime
 import json
@@ -86,13 +92,8 @@ class Annotator(object):
             bases_counts[base] = 0
         return bases_counts
 
-    def _summarize_pileup(self, pileup):
-        """
-        :param pileup: the pileup column at a given position
-        :type: pd.DataFrame
-        :return: the counts in the pileup for each base including N
-        :rtype: pd.Series
-        """
+    def _summarize_pileup(self, pileup: DataFrame) -> Series:
+
         # filters reads by mapping quality and base call quality
         pileup = pileup[pileup.base_call_qualities > self.base_call_quality_threshold]
         pileup = pileup[pileup.mapping_qualities > self.mapping_quality_threshold]
@@ -105,15 +106,8 @@ class Annotator(object):
         bases_counts = Annotator._initialize_empty_count(bases_counts, 'N')
         return bases_counts
 
-    def _get_pileup(self, variant, bam):
-        """
-        :param variant: the variant that determines the genomic position
-        :type: cyvcf2.cyvcf2.Variant
-        :param bam: the BAM file from where to read the pileups
-        :type: pysam.AlignmentFile
-        :return: the pileup columns at the variant position
-        :rtype: pd.DataFrame
-        """
+    def _get_pileup(self, variant: Variant, bam: AlignmentFile) -> DataFrame:
+
         chromosome = variant.CHROM
         position = variant.POS
         # this function returns the pileups at all positions covered by reads covered the queried position
@@ -137,31 +131,22 @@ class Annotator(object):
         })
 
     @staticmethod
-    def _get_af(base_counts, variant):
-        """
-        :type: pd.Series
-        :type: cyvcf2.cyvcf2.Variant
-        :return: a list containing the allele frequencies for each of the alternate alleles in the variant
-        :rtype: list
-        """
+    def _get_af(base_counts: Series, variant: Variant) -> List:
+
         return [str(base_counts.get(a, 0) / int(base_counts.sum()))
                 if base_counts.sum() > 0 else str(0.0) for a in variant.ALT]
 
     @staticmethod
-    def _get_ac(base_counts, variant):
-        """
-        :type: pd.Series
-        :type: cyvcf2.cyvcf2.Variant
-        :return: a list containing the allele counts for each of the alternate alleles in the variant
-        :rtype: list
-        """
+    def _get_ac(base_counts: Series, variant: Variant) -> List:
+
         return [str(base_counts.get(a, 0)) for a in variant.ALT]
 
     def _write_batch(self, batch):
         for v in batch:
             self.vcf_writer.write_record(v)
 
-    def _add_snv_stats(self, bams, variant, prefix):
+    def _add_snv_stats(self, bams: List[AlignmentFile], variant: Variant, prefix: str):
+
         base_counts = [self._summarize_pileup(self._get_pileup(variant, b)) for b in bams]
         aggregated_base_counts = sum(base_counts)
         variant.INFO["{}_af".format(prefix)] = ",".join(Annotator._get_af(aggregated_base_counts, variant))
@@ -173,6 +158,92 @@ class Annotator(object):
                 variant.INFO["{}_ac_{}".format(prefix, i)] = ",".join(Annotator._get_ac(c, variant))
                 variant.INFO["{}_dp_{}".format(prefix, i)] = str(c.sum())
 
+    def _add_insertion_stats(self, bams: List[AlignmentFile], variant: Variant, prefix: str):
+
+        chromosome = variant.CHROM
+        position = variant.POS
+        length = len(variant.ALT[0]) - len(variant.REF)
+        global_dp = 0
+        global_ac = 0
+        for i, b in enumerate(bams):
+            pileups = b.pileup(contig=chromosome, start=position - 1, stop=position, truncate=True)
+            try:
+                pileup = next(pileups)
+                dp = 0
+                ac = 0
+                for r in pileup.pileups:
+                    dp += 1
+                    if r.indel > 0:
+                        # read with an insertion
+                        start = r.alignment.reference_start
+                        for cigar_type, cigar_length in r.alignment.cigartuples:
+                            if cigar_type in [0, 2, 3, 7, 8]:  # consumes reference M, D, N, =, X
+                                start += cigar_length
+                                if start > position:
+                                    break
+                            elif cigar_type == 1:    # does not count I
+                                if start == position and cigar_length == length:
+                                    ac += 1
+                af = float(ac) / dp if dp > 0 else 0.0
+                if len(bams) > 1:
+                    variant.INFO["{}_af_{}".format(prefix, i+1)] = af
+                    variant.INFO["{}_ac_{}".format(prefix, i+1)] = ac
+                    variant.INFO["{}_dp_{}".format(prefix, i+1)] = dp
+                global_ac += ac
+                global_dp += dp
+            except StopIteration:
+                # no reads
+                pass
+
+        global_af = float(global_ac) / global_dp if global_dp > 0 else 0.0
+        variant.INFO["{}_af".format(prefix)] = global_af
+        variant.INFO["{}_ac".format(prefix)] = global_ac
+        variant.INFO["{}_dp".format(prefix)] = global_dp
+
+    def _add_deletion_stats(self, bams: List[AlignmentFile], variant: Variant, prefix: str):
+
+        chromosome = variant.CHROM
+        position = variant.POS
+        cigar_length = len(variant.REF) - len(variant.ALT[0])
+        global_dp = 0
+        global_ac = 0
+        for i, b in enumerate(bams):
+            pileups = b.pileup(contig=chromosome, start=position - 1, stop=position, truncate=True)
+            try:
+                pileup = next(pileups)
+                dp = 0
+                ac = 0
+                for r in pileup.pileups:
+                    dp += 1
+                    if r.indel < 0:
+                        # read with an deletion
+                        start = r.alignment.reference_start
+                        for cigar_type, cigar_length in r.alignment.cigartuples:
+                            if cigar_type in [0, 3, 7, 8]:  # consumes reference M, N, =, X
+                                start += cigar_length
+                            elif cigar_type == 2:   # D
+                                if start == position and cigar_length == cigar_length:
+                                    ac += 1
+                                else:
+                                    start += cigar_length
+                            if start > position:
+                                break
+                af = float(ac) / dp if dp > 0 else 0.0
+                if len(bams) > 1:
+                    variant.INFO["{}_af_{}".format(prefix, i+1)] = af
+                    variant.INFO["{}_ac_{}".format(prefix, i+1)] = ac
+                    variant.INFO["{}_dp_{}".format(prefix, i+1)] = dp
+                global_ac += ac
+                global_dp += dp
+            except StopIteration:
+                # no supporting reads
+                pass
+
+        global_af = float(global_ac) / global_dp if global_dp > 0 else 0.0
+        variant.INFO["{}_af".format(prefix)] = global_af
+        variant.INFO["{}_ac".format(prefix)] = global_ac
+        variant.INFO["{}_dp".format(prefix)] = global_dp
+
     def run(self):
         batch = []
         variant: Variant
@@ -181,9 +252,17 @@ class Annotator(object):
             if self.tumor_bams:
                 if variant.is_snp:
                     self._add_snv_stats(self.tumor_bams, variant, self.tumor_prefix)
+                elif variant.is_indel and not variant.is_deletion:
+                    self._add_insertion_stats(self.tumor_bams, variant, self.tumor_prefix)
+                elif variant.is_indel and variant.is_deletion:
+                    self._add_deletion_stats(self.tumor_bams, variant, self.tumor_prefix)
             if self.normal_bams:
                 if variant.is_snp:
                     self._add_snv_stats(self.normal_bams, variant, self.normal_prefix)
+                elif variant.is_indel and not variant.is_deletion:
+                    self._add_insertion_stats(self.normal_bams, variant, self.normal_prefix)
+                elif variant.is_indel and variant.is_deletion:
+                    self._add_deletion_stats(self.normal_bams, variant, self.normal_prefix)
             batch.append(variant)
             if len(batch) >= 1000:
                 self._write_batch(batch)
