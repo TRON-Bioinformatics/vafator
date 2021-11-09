@@ -1,13 +1,11 @@
 from typing import List
-
 import pysam
 from cyvcf2 import VCF, Writer, Variant
 import pandas as pd
 import os
-
 from pandas import DataFrame, Series
-from pysam import AlignmentFile, PileupColumn
-
+from pysam import AlignmentFile
+from pysam.libcalignmentfile import IteratorColumnRegion
 import vafator
 import datetime
 import json
@@ -22,17 +20,9 @@ class Annotator(object):
         "timestamp": datetime.datetime.now().timestamp(),
     }
 
-    def __init__(self, input_vcf, output_vcf, normal_bams=[], tumor_bams=[],
+    def __init__(self, input_vcf: str, output_vcf: str, normal_bams=[], tumor_bams=[],
                  mapping_qual_thr=0, base_call_qual_thr=29, prefix=None):
-        """
-        :param input_vcf: the input VCF file
-        :param normal_bams: none or many normal BAM files
-        :param tumor_bams: none or many tumor BAM files
-        :param output_vcf: the file path of the output VCF
-        :param mapping_qual_thr: reads with a mapping quality lower or equal than this threshold will be filtered out
-        :param base_call_qual_thr: bases with a basecall quality lower than or equal this threshold will be filtered out
-        :params prefix: prefix for the annotations
-        """
+
         self.mapping_quality_threshold = mapping_qual_thr
         self.base_call_quality_threshold = base_call_qual_thr
         self.vcf = VCF(input_vcf)
@@ -103,7 +93,7 @@ class Annotator(object):
         bases_counts = Annotator._initialize_empty_count(bases_counts, 'N')
         return bases_counts
 
-    def _parse_pileup(self, pileups):
+    def _parse_pileup(self, pileups: IteratorColumnRegion):
         try:
             pileup = next(pileups)
         except StopIteration:
@@ -120,7 +110,7 @@ class Annotator(object):
             'mapping_qualities': pileup.get_mapping_qualities()
         })
 
-    def _get_variant_pileup(self, variant: Variant, bam: AlignmentFile):
+    def _get_variant_pileup(self, variant: Variant, bam: AlignmentFile) -> IteratorColumnRegion:
 
         chromosome = variant.CHROM
         position = variant.POS
