@@ -95,8 +95,8 @@ class Annotator(object):
     def _summarize_pileup(self, pileup: DataFrame) -> Series:
 
         # filters reads by mapping quality and base call quality
-        pileup = pileup[pileup.base_call_qualities > self.base_call_quality_threshold]
-        pileup = pileup[pileup.mapping_qualities > self.mapping_quality_threshold]
+        pileup = pileup[pileup.base_call_qualities >= self.base_call_quality_threshold]
+        pileup = pileup[pileup.mapping_qualities >= self.mapping_quality_threshold]
         # ignore case in the bases as BAM specification states that it has no meaning
         bases_counts = pileup.bases.transform(lambda x: x.upper()).value_counts()
         bases_counts = Annotator._initialize_empty_count(bases_counts, 'A')
@@ -129,7 +129,9 @@ class Annotator(object):
         position = variant.POS
         # this function returns the pileups at all positions covered by reads covered the queried position
         # approximately +- read size bp
-        return bam.pileup(contig=chromosome, start=position-1, stop=position, truncate=True)
+        return bam.pileup(contig=chromosome, start=position-1, stop=position, truncate=True,
+                          min_base_quality=self.base_call_quality_threshold,
+                          min_mapping_quality=self.mapping_quality_threshold)
 
 
     @staticmethod
