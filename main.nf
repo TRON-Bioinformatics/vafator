@@ -12,7 +12,6 @@ params.output = "output"
 params.mapping_quality = false
 params.base_call_quality = false
 params.skip_multiallelic_filter = false
-params.prefix = false
 
 if (params.help) {
     log.info params.help_message

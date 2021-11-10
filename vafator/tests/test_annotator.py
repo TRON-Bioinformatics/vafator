@@ -13,7 +13,8 @@ class TestAnnotator(TestCase):
         output_vcf = pkg_resources.resource_filename(__name__, "resources/results/test_annotator1_output.vcf")
         bam1 = pkg_resources.resource_filename(__name__, "resources/COLO_829_n1.bam")
         bam2 = pkg_resources.resource_filename(__name__, "resources/COLO_829_t1.bam")
-        annotator = Annotator(input_vcf=input_file, output_vcf=output_vcf, normal_bams=[bam1], tumor_bams=[bam2])
+        annotator = Annotator(
+            input_vcf=input_file, output_vcf=output_vcf, input_bams={"normal": [bam1], "tumor": [bam2]})
         annotator.run()
 
         self.assertTrue(os.path.exists(output_vcf))
@@ -35,7 +36,7 @@ class TestAnnotator(TestCase):
         bam1 = pkg_resources.resource_filename(__name__, "resources/COLO_829_n1.bam")
         bam2 = pkg_resources.resource_filename(__name__, "resources/COLO_829_t1.bam")
         annotator = Annotator(
-            input_vcf=input_file, output_vcf=output_vcf, normal_bams=[bam1, bam2], tumor_bams=[bam1, bam2])
+            input_vcf=input_file, output_vcf=output_vcf, input_bams={"normal": [bam1, bam2], "tumor": [bam1, bam2]})
         annotator.run()
 
         self.assertTrue(os.path.exists(output_vcf))
@@ -63,8 +64,8 @@ class TestAnnotator(TestCase):
         bam1 = pkg_resources.resource_filename(__name__, "resources/COLO_829_n1.bam")
         bam2 = pkg_resources.resource_filename(__name__, "resources/COLO_829_t1.bam")
         annotator = Annotator(
-            input_vcf=input_file, output_vcf=output_vcf, normal_bams=[bam1, bam2], tumor_bams=[bam1, bam2],
-            prefix="RNA")
+            input_vcf=input_file, output_vcf=output_vcf,
+            input_bams={"RNA_normal": [bam1, bam2], "RNA_tumor": [bam1, bam2]})
         annotator.run()
 
         self.assertTrue(os.path.exists(output_vcf))
@@ -104,7 +105,7 @@ class TestAnnotator(TestCase):
         bam_file = pkg_resources.resource_filename(
             __name__,
             "resources/project.NIST_NIST7035_H7AP8ADXX_TAAGGCGA_1_NA12878.bwa.markDuplicates.chr1_1000000_2000000.bam")
-        annotator = Annotator(input_vcf=input_file, output_vcf=output_vcf, normal_bams=[bam_file])
+        annotator = Annotator(input_vcf=input_file, output_vcf=output_vcf, input_bams={"normal": [bam_file]})
         annotator.run()
 
         self.assertTrue(os.path.exists(output_vcf))

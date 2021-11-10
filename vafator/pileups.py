@@ -11,6 +11,15 @@ class VafatorVariant:
     reference: str
     alternative: List[str]
 
+    def is_snp(self):
+        return len(self.reference) == 1 and len(self.alternative[0]) == 1
+
+    def is_insertion(self):
+        return len(self.reference) == 1 and len(self.alternative[0]) > 1
+
+    def is_deletion(self):
+        return len(self.alternative[0]) == 1 and len(self.reference) > 1
+
 
 def build_variant(variant: Variant) -> VafatorVariant:
     return VafatorVariant(
@@ -32,8 +41,24 @@ def get_variant_pileup(
                       min_mapping_quality=min_mapping_quality)
 
 
-def get_insertion_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion):
-    ac = 0
+@dataclass
+class CoverageMetrics:
+    ac: dict
+    dp: int
+
+
+def get_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion) -> CoverageMetrics:
+    if variant.is_snp():
+        return get_snv_metrics(variant, pileups)
+    elif variant.is_insertion():
+        return get_insertion_metrics(variant, pileups)
+    elif variant.is_deletion():
+        return get_deletion_metrics(variant, pileups)
+    return None
+
+
+def get_insertion_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion) -> CoverageMetrics:
+    ac = {alt.upper(): 0 for alt in variant.alternative}
     dp = 0
     position = variant.position
     insertion_length = len(variant.alternative[0]) - len(variant.reference)
@@ -57,15 +82,15 @@ def get_insertion_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion
                         insertion_in_query = r.alignment.query[relative_position:relative_position + insertion_length]
                         if start == position and cigar_length == insertion_length and \
                                 insertion == insertion_in_query:
-                            ac += 1
+                            ac[variant.alternative[0].upper()] = ac[variant.alternative[0].upper()] + 1
     except StopIteration:
         # no reads
         pass
-    return ac, dp
+    return CoverageMetrics(ac=ac, dp=dp)
 
 
-def get_deletion_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion):
-    ac = 0
+def get_deletion_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion) -> CoverageMetrics:
+    ac = {alt.upper(): 0 for alt in variant.alternative}
     dp = 0
     position = variant.position
     deletion_length = len(variant.reference) - len(variant.alternative[0])
@@ -81,7 +106,7 @@ def get_deletion_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion)
                         start += cigar_length
                     elif cigar_type == 2:  # D
                         if start == position and cigar_length == deletion_length:
-                            ac += 1
+                            ac[variant.alternative[0].upper()] = ac[variant.alternative[0].upper()] + 1
                         else:
                             start += cigar_length
                     if start > position:
@@ -89,7 +114,7 @@ def get_deletion_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion)
     except StopIteration:
         # no reads
         pass
-    return ac, dp
+    return CoverageMetrics(ac=ac, dp=dp)
 
 
 def _initialize_empty_count(bases_counts, base):
@@ -98,7 +123,7 @@ def _initialize_empty_count(bases_counts, base):
     return bases_counts
 
 
-def get_snv_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion):
+def get_snv_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion) -> CoverageMetrics:
     dp = 0
     ac = {alt.upper(): 0 for alt in variant.alternative}
     ac[variant.reference.upper()] = 0
@@ -112,4 +137,4 @@ def get_snv_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion):
     except StopIteration:
         # no reads
         pass
-    return ac, dp
+    return CoverageMetrics(ac=ac, dp=dp)
