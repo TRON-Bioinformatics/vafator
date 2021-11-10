@@ -37,6 +37,7 @@ def get_insertion_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion
     dp = 0
     position = variant.position
     insertion_length = len(variant.alternative[0]) - len(variant.reference)
+    insertion = variant.alternative[0][1:]
     try:
         pileup = next(pileups)
         for r in pileup.pileups:
@@ -44,13 +45,18 @@ def get_insertion_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion
             if r.indel > 0:
                 # read with an insertion
                 start = r.alignment.reference_start
+                relative_position = 0
                 for cigar_type, cigar_length in r.alignment.cigartuples:
                     if cigar_type in [0, 2, 3, 7, 8]:  # consumes reference M, D, N, =, X
                         start += cigar_length
                         if start > position:
                             break
-                    elif cigar_type == 1:  # does not count I
-                        if start == position and cigar_length == insertion_length:
+                    if cigar_type in [0, 1, 4, 7, 8]:  # consumes query M, I, S, =, X
+                        relative_position += cigar_length
+                    if cigar_type == 1:  # does not count I
+                        insertion_in_query = r.alignment.query[relative_position:relative_position + insertion_length]
+                        if start == position and cigar_length == insertion_length and \
+                                insertion == insertion_in_query:
                             ac += 1
     except StopIteration:
         # no reads
