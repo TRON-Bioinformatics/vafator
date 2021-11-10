@@ -5,6 +5,7 @@ params.mapping_quality = false
 params.base_call_quality = false
 params.skip_multiallelic_filter = false
 params.prefix = false
+params.enable_conda = false
 
 
 process VAFATOR {
@@ -12,6 +13,8 @@ process VAFATOR {
     memory params.memory
     tag "${name}"
     publishDir "${params.output}/${name}", mode: "copy"
+
+    conda (params.enable_conda ? "bioconda::vafator=1.0.0" : null)
 
     input:
     tuple val(name), file(vcf), val(normal_bams), val(tumor_bams)
@@ -38,6 +41,8 @@ process MULTIALLELIC_FILTER {
     memory params.memory
     tag "${name}"
     publishDir "${params.output}/${name}", mode: "copy"
+
+    conda (params.enable_conda ? "bioconda::vafator=1.0.0" : null)
 
     input:
     tuple val(name), file(vcf)

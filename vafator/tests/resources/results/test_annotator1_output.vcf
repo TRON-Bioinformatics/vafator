@@ -8,22 +8,35 @@
 ##contig=<ID=chr6,length=171115067>
 ##INFO=<ID=tumor_af,Number=1,Type=String,Description="">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
-##vafator_command_line={"name": "vafator", "version": "0.3.1", "date": "Thu Oct  7 22:21:54 2021", "timestamp": 1633638114.026383, "input_vcf": "/home/priesgo/src/github/vafator/vafator/tests/resources/test1.vcf", "output_vcf": "/home/priesgo/src/github/vafator/vafator/tests/resources/results/test_annotator1_output.vcf", "normal_bams": ["/home/priesgo/src/github/vafator/vafator/tests/resources/COLO_829_n1.bam"], "tumor_bams": ["/home/priesgo/src/github/vafator/vafator/tests/resources/COLO_829_t1.bam"], "mapping_quality_threshold": 0, "base_call_quality_threshold": 29}
-##INFO=<ID=tumor_dp,Number=A,Type=Float,Description="Total depth of coverage in the tumor samples">
-##INFO=<ID=tumor_ac,Number=A,Type=Integer,Description="Allele count for the alternate alleles in the tumor samples">
-##INFO=<ID=normal_af,Number=A,Type=Float,Description="Allele frequency for the alternate alleles in the normal samples">
-##INFO=<ID=normal_dp,Number=A,Type=Float,Description="Total depth of coverage in the normal samples">
-##INFO=<ID=normal_ac,Number=A,Type=Integer,Description="Allele count for the alternate alleles in the normal samples">
+##vafator_command_line={"name": "vafator", "version": "1.0.0", "date": "Wed Nov 10 17:03:09 2021", "timestamp": 1636560189.413893, "input_vcf": "/home/priesgo/src/github/vafator/vafator/tests/resources/test1.vcf", "output_vcf": "/home/priesgo/src/github/vafator/vafator/tests/resources/results/test_annotator1_output.vcf", "normal_bams": ["/home/priesgo/src/github/vafator/vafator/tests/resources/COLO_829_n1.bam", "/home/priesgo/src/github/vafator/vafator/tests/resources/COLO_829_t1.bam"], "tumor_bams": ["/home/priesgo/src/github/vafator/vafator/tests/resources/COLO_829_n1.bam", "/home/priesgo/src/github/vafator/vafator/tests/resources/COLO_829_t1.bam"], "mapping_quality_threshold": 0, "base_call_quality_threshold": 29, "prefix": "RNA"}
+##INFO=<ID=RNA_tumor_af,Number=A,Type=Float,Description="Allele frequency for the alternate alleles in the RNA_tumor samples">
+##INFO=<ID=RNA_tumor_dp,Number=A,Type=Float,Description="Total depth of coverage in the RNA_tumor samples (independent of alleles)">
+##INFO=<ID=RNA_tumor_ac,Number=A,Type=Integer,Description="Allele count for the alternate alleles in the RNA_tumor samples">
+##INFO=<ID=RNA_tumor_af_1,Number=A,Type=Float,Description="Allele frequency for the alternate alleles in the RNA_tumor sample COLO_829_n1">
+##INFO=<ID=RNA_tumor_dp_1,Number=A,Type=Float,Description="Depth of coverage in the RNA_tumor sample COLO_829_n1 (independent of alleles)">
+##INFO=<ID=RNA_tumor_ac_1,Number=A,Type=Integer,Description="Allele count for the alternate alleles in the RNA_tumor sample COLO_829_n1">
+##INFO=<ID=RNA_tumor_af_2,Number=A,Type=Float,Description="Allele frequency for the alternate alleles in the RNA_tumor sample COLO_829_t1">
+##INFO=<ID=RNA_tumor_dp_2,Number=A,Type=Float,Description="Depth of coverage in the RNA_tumor sample COLO_829_t1 (independent of alleles)">
+##INFO=<ID=RNA_tumor_ac_2,Number=A,Type=Integer,Description="Allele count for the alternate alleles in the RNA_tumor sample COLO_829_t1">
+##INFO=<ID=RNA_normal_af,Number=A,Type=Float,Description="Allele frequency for the alternate alleles in the RNA_normal samples">
+##INFO=<ID=RNA_normal_dp,Number=A,Type=Float,Description="Total depth of coverage in the RNA_normal samples (independent of alleles)">
+##INFO=<ID=RNA_normal_ac,Number=A,Type=Integer,Description="Allele count for the alternate alleles in the RNA_normal samples">
+##INFO=<ID=RNA_normal_af_1,Number=A,Type=Float,Description="Allele frequency for the alternate alleles in the RNA_normal sample COLO_829_n1">
+##INFO=<ID=RNA_normal_dp_1,Number=A,Type=Float,Description="Depth of coverage in the RNA_normal sample COLO_829_n1 (independent of alleles)">
+##INFO=<ID=RNA_normal_ac_1,Number=A,Type=Integer,Description="Allele count for the alternate alleles in the RNA_normal sample COLO_829_n1">
+##INFO=<ID=RNA_normal_af_2,Number=A,Type=Float,Description="Allele frequency for the alternate alleles in the RNA_normal sample COLO_829_t1">
+##INFO=<ID=RNA_normal_dp_2,Number=A,Type=Float,Description="Depth of coverage in the RNA_normal sample COLO_829_t1 (independent of alleles)">
+##INFO=<ID=RNA_normal_ac_2,Number=A,Type=Integer,Description="Allele count for the alternate alleles in the RNA_normal sample COLO_829_t1">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	tumor
-chr1	25734793	.	C	T	.	PASS	tumor_af=0.0;tumor_ac=0;tumor_dp=0;normal_af=0.0;normal_ac=0;normal_dp=0	GT	0/1
-chr1	37323930	.	C	T	.	PASS	tumor_af=0.0;tumor_ac=0;tumor_dp=0;normal_af=0.0;normal_ac=0;normal_dp=0	GT	0/1
-chr2	1234	.	C	T	.	PASS	tumor_af=0.0;tumor_ac=0;tumor_dp=0;normal_af=0.0;normal_ac=0;normal_dp=0	GT	0/1
-chr2	1235	.	C	T	.	PASS	tumor_af=0.0;tumor_ac=0;tumor_dp=0;normal_af=0.0;normal_ac=0;normal_dp=0	GT	0/1
-chr3	1234	.	C	T	.	PASS	tumor_af=0.0;tumor_ac=0;tumor_dp=0;normal_af=0.0;normal_ac=0;normal_dp=0	GT	0/1
-chr4	1234	.	C	T	.	PASS	tumor_af=0.0;tumor_ac=0;tumor_dp=0;normal_af=0.0;normal_ac=0;normal_dp=0	GT	0/1
-chr4	1235	.	C	T	.	PASS	tumor_af=0.0;tumor_ac=0;tumor_dp=0;normal_af=0.0;normal_ac=0;normal_dp=0	GT	0/1
-chr4	1236	.	C	T	.	PASS	tumor_af=0.0;tumor_ac=0;tumor_dp=0;normal_af=0.0;normal_ac=0;normal_dp=0	GT	0/1
-chr5	1234	.	C	T	.	PASS	tumor_af=0.0;tumor_ac=0;tumor_dp=0;normal_af=0.0;normal_ac=0;normal_dp=0	GT	0/1
-chr6	1234	.	C	T	.	PASS	tumor_af=0.0;tumor_ac=0;tumor_dp=0;normal_af=0.0;normal_ac=0;normal_dp=0	GT	0/1
-chr6	1235	.	C	T	.	PASS	tumor_af=0.0;tumor_ac=0;tumor_dp=0;normal_af=0.0;normal_ac=0;normal_dp=0	GT	0/1
-chr6	1236	.	C	T	.	PASS	tumor_af=0.0;tumor_ac=0;tumor_dp=0;normal_af=0.0;normal_ac=0;normal_dp=0	GT	0/1
+chr1	25734793	.	C	T	.	PASS	RNA_tumor_af_1=0.0;RNA_tumor_ac_1=0;RNA_tumor_dp_1=0;RNA_tumor_af_2=0.0;RNA_tumor_ac_2=0;RNA_tumor_dp_2=0;RNA_tumor_af=0.0;RNA_tumor_ac=0;RNA_tumor_dp=0;RNA_normal_af_1=0.0;RNA_normal_ac_1=0;RNA_normal_dp_1=0;RNA_normal_af_2=0.0;RNA_normal_ac_2=0;RNA_normal_dp_2=0;RNA_normal_af=0.0;RNA_normal_ac=0;RNA_normal_dp=0	GT	0/1
+chr1	37323930	.	C	T	.	PASS	RNA_tumor_af_1=0.0;RNA_tumor_ac_1=0;RNA_tumor_dp_1=0;RNA_tumor_af_2=0.0;RNA_tumor_ac_2=0;RNA_tumor_dp_2=0;RNA_tumor_af=0.0;RNA_tumor_ac=0;RNA_tumor_dp=0;RNA_normal_af_1=0.0;RNA_normal_ac_1=0;RNA_normal_dp_1=0;RNA_normal_af_2=0.0;RNA_normal_ac_2=0;RNA_normal_dp_2=0;RNA_normal_af=0.0;RNA_normal_ac=0;RNA_normal_dp=0	GT	0/1
+chr2	1234	.	C	T	.	PASS	RNA_tumor_af_1=0.0;RNA_tumor_ac_1=0;RNA_tumor_dp_1=0;RNA_tumor_af_2=0.0;RNA_tumor_ac_2=0;RNA_tumor_dp_2=0;RNA_tumor_af=0.0;RNA_tumor_ac=0;RNA_tumor_dp=0;RNA_normal_af_1=0.0;RNA_normal_ac_1=0;RNA_normal_dp_1=0;RNA_normal_af_2=0.0;RNA_normal_ac_2=0;RNA_normal_dp_2=0;RNA_normal_af=0.0;RNA_normal_ac=0;RNA_normal_dp=0	GT	0/1
+chr2	1235	.	C	T	.	PASS	RNA_tumor_af_1=0.0;RNA_tumor_ac_1=0;RNA_tumor_dp_1=0;RNA_tumor_af_2=0.0;RNA_tumor_ac_2=0;RNA_tumor_dp_2=0;RNA_tumor_af=0.0;RNA_tumor_ac=0;RNA_tumor_dp=0;RNA_normal_af_1=0.0;RNA_normal_ac_1=0;RNA_normal_dp_1=0;RNA_normal_af_2=0.0;RNA_normal_ac_2=0;RNA_normal_dp_2=0;RNA_normal_af=0.0;RNA_normal_ac=0;RNA_normal_dp=0	GT	0/1
+chr3	1234	.	C	T	.	PASS	RNA_tumor_af_1=0.0;RNA_tumor_ac_1=0;RNA_tumor_dp_1=0;RNA_tumor_af_2=0.0;RNA_tumor_ac_2=0;RNA_tumor_dp_2=0;RNA_tumor_af=0.0;RNA_tumor_ac=0;RNA_tumor_dp=0;RNA_normal_af_1=0.0;RNA_normal_ac_1=0;RNA_normal_dp_1=0;RNA_normal_af_2=0.0;RNA_normal_ac_2=0;RNA_normal_dp_2=0;RNA_normal_af=0.0;RNA_normal_ac=0;RNA_normal_dp=0	GT	0/1
+chr4	1234	.	C	T	.	PASS	RNA_tumor_af_1=0.0;RNA_tumor_ac_1=0;RNA_tumor_dp_1=0;RNA_tumor_af_2=0.0;RNA_tumor_ac_2=0;RNA_tumor_dp_2=0;RNA_tumor_af=0.0;RNA_tumor_ac=0;RNA_tumor_dp=0;RNA_normal_af_1=0.0;RNA_normal_ac_1=0;RNA_normal_dp_1=0;RNA_normal_af_2=0.0;RNA_normal_ac_2=0;RNA_normal_dp_2=0;RNA_normal_af=0.0;RNA_normal_ac=0;RNA_normal_dp=0	GT	0/1
+chr4	1235	.	C	T	.	PASS	RNA_tumor_af_1=0.0;RNA_tumor_ac_1=0;RNA_tumor_dp_1=0;RNA_tumor_af_2=0.0;RNA_tumor_ac_2=0;RNA_tumor_dp_2=0;RNA_tumor_af=0.0;RNA_tumor_ac=0;RNA_tumor_dp=0;RNA_normal_af_1=0.0;RNA_normal_ac_1=0;RNA_normal_dp_1=0;RNA_normal_af_2=0.0;RNA_normal_ac_2=0;RNA_normal_dp_2=0;RNA_normal_af=0.0;RNA_normal_ac=0;RNA_normal_dp=0	GT	0/1
+chr4	1236	.	C	T	.	PASS	RNA_tumor_af_1=0.0;RNA_tumor_ac_1=0;RNA_tumor_dp_1=0;RNA_tumor_af_2=0.0;RNA_tumor_ac_2=0;RNA_tumor_dp_2=0;RNA_tumor_af=0.0;RNA_tumor_ac=0;RNA_tumor_dp=0;RNA_normal_af_1=0.0;RNA_normal_ac_1=0;RNA_normal_dp_1=0;RNA_normal_af_2=0.0;RNA_normal_ac_2=0;RNA_normal_dp_2=0;RNA_normal_af=0.0;RNA_normal_ac=0;RNA_normal_dp=0	GT	0/1
+chr5	1234	.	C	T	.	PASS	RNA_tumor_af_1=0.0;RNA_tumor_ac_1=0;RNA_tumor_dp_1=0;RNA_tumor_af_2=0.0;RNA_tumor_ac_2=0;RNA_tumor_dp_2=0;RNA_tumor_af=0.0;RNA_tumor_ac=0;RNA_tumor_dp=0;RNA_normal_af_1=0.0;RNA_normal_ac_1=0;RNA_normal_dp_1=0;RNA_normal_af_2=0.0;RNA_normal_ac_2=0;RNA_normal_dp_2=0;RNA_normal_af=0.0;RNA_normal_ac=0;RNA_normal_dp=0	GT	0/1
+chr6	1234	.	C	T	.	PASS	RNA_tumor_af_1=0.0;RNA_tumor_ac_1=0;RNA_tumor_dp_1=0;RNA_tumor_af_2=0.0;RNA_tumor_ac_2=0;RNA_tumor_dp_2=0;RNA_tumor_af=0.0;RNA_tumor_ac=0;RNA_tumor_dp=0;RNA_normal_af_1=0.0;RNA_normal_ac_1=0;RNA_normal_dp_1=0;RNA_normal_af_2=0.0;RNA_normal_ac_2=0;RNA_normal_dp_2=0;RNA_normal_af=0.0;RNA_normal_ac=0;RNA_normal_dp=0	GT	0/1
+chr6	1235	.	C	T	.	PASS	RNA_tumor_af_1=0.0;RNA_tumor_ac_1=0;RNA_tumor_dp_1=0;RNA_tumor_af_2=0.0;RNA_tumor_ac_2=0;RNA_tumor_dp_2=0;RNA_tumor_af=0.0;RNA_tumor_ac=0;RNA_tumor_dp=0;RNA_normal_af_1=0.0;RNA_normal_ac_1=0;RNA_normal_dp_1=0;RNA_normal_af_2=0.0;RNA_normal_ac_2=0;RNA_normal_dp_2=0;RNA_normal_af=0.0;RNA_normal_ac=0;RNA_normal_dp=0	GT	0/1
+chr6	1236	.	C	T	.	PASS	RNA_tumor_af_1=0.0;RNA_tumor_ac_1=0;RNA_tumor_dp_1=0;RNA_tumor_af_2=0.0;RNA_tumor_ac_2=0;RNA_tumor_dp_2=0;RNA_tumor_af=0.0;RNA_tumor_ac=0;RNA_tumor_dp=0;RNA_normal_af_1=0.0;RNA_normal_ac_1=0;RNA_normal_dp_1=0;RNA_normal_af_2=0.0;RNA_normal_ac_2=0;RNA_normal_dp_2=0;RNA_normal_af=0.0;RNA_normal_ac=0;RNA_normal_dp=0	GT	0/1

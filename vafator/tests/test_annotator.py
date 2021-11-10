@@ -95,3 +95,24 @@ class TestAnnotator(TestCase):
                 return v.INFO.get(annotation)
         vcf.close()
         return {}
+
+    def test_nist(self):
+        input_file = pkg_resources.resource_filename(
+            __name__, "resources/project.NIST.hc.snps.indels.chr1_1000000_2000000.vcf")
+        output_vcf = pkg_resources.resource_filename(
+            __name__, "resources/results/project.NIST.hc.snps.indels.chr1_1000000_2000000.vaf.vcf")
+        bam_file = pkg_resources.resource_filename(
+            __name__,
+            "resources/project.NIST_NIST7035_H7AP8ADXX_TAAGGCGA_1_NA12878.bwa.markDuplicates.chr1_1000000_2000000.bam")
+        annotator = Annotator(input_vcf=input_file, output_vcf=output_vcf, normal_bams=[bam_file])
+        annotator.run()
+
+        self.assertTrue(os.path.exists(output_vcf))
+        n_variants_input = test_utils._get_count_variants(input_file)
+        n_variants_output = test_utils._get_count_variants(output_vcf)
+        self.assertTrue(n_variants_input == n_variants_output)
+
+        info_annotations = test_utils._get_info_fields(output_vcf)
+        self.assertTrue("normal_af" in info_annotations)
+        self.assertTrue("normal_ac" in info_annotations)
+        self.assertTrue("normal_dp" in info_annotations)
