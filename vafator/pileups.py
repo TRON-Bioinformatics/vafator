@@ -1,12 +1,42 @@
+from dataclasses import dataclass
+from typing import List
 from cyvcf2 import Variant
-from pysam.libcalignmentfile import IteratorColumnRegion
+from pysam.libcalignmentfile import IteratorColumnRegion, AlignmentFile
 
 
-def get_insertion_metrics(variant: Variant, pileups: IteratorColumnRegion):
+@dataclass
+class VafatorVariant:
+    chromosome: str
+    position: int
+    reference: str
+    alternative: List[str]
+
+
+def build_variant(variant: Variant) -> VafatorVariant:
+    return VafatorVariant(
+        chromosome=variant.CHROM,
+        position=variant.POS,
+        reference=variant.REF,
+        alternative=variant.ALT
+    )
+
+
+def get_variant_pileup(
+        variant: VafatorVariant, bam: AlignmentFile, min_base_quality, min_mapping_quality) -> IteratorColumnRegion:
+    chromosome = variant.chromosome
+    position = variant.position
+    # this function returns the pileups at all positions covered by reads covered the queried position
+    # approximately +- read size bp
+    return bam.pileup(contig=chromosome, start=position - 1, stop=position, truncate=True,
+                      min_base_quality=min_base_quality,
+                      min_mapping_quality=min_mapping_quality)
+
+
+def get_insertion_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion):
     ac = 0
     dp = 0
-    position = variant.POS
-    insertion_length = len(variant.ALT[0]) - len(variant.REF)
+    position = variant.position
+    insertion_length = len(variant.alternative[0]) - len(variant.reference)
     try:
         pileup = next(pileups)
         for r in pileup.pileups:
@@ -28,11 +58,11 @@ def get_insertion_metrics(variant: Variant, pileups: IteratorColumnRegion):
     return ac, dp
 
 
-def get_deletion_metrics(variant: Variant, pileups: IteratorColumnRegion):
+def get_deletion_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion):
     ac = 0
     dp = 0
-    position = variant.POS
-    deletion_length = len(variant.REF) - len(variant.ALT[0])
+    position = variant.position
+    deletion_length = len(variant.reference) - len(variant.alternative[0])
     try:
         pileup = next(pileups)
         for r in pileup.pileups:
@@ -62,15 +92,17 @@ def _initialize_empty_count(bases_counts, base):
     return bases_counts
 
 
-def get_snv_metrics(variant: Variant, pileups: IteratorColumnRegion):
+def get_snv_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion):
     dp = 0
-    ac = {alt: 0 for alt in variant.ALT}
+    ac = {alt.upper(): 0 for alt in variant.alternative}
+    ac[variant.reference.upper()] = 0
     try:
         pileup = next(pileups)
         for s in pileup.get_query_sequences():
             dp += 1
-            if s in ac:
-                ac[s] = ac[s] + 1
+            base_upper_case = s.upper()
+            if base_upper_case in ac:
+                ac[base_upper_case] = ac[base_upper_case] + 1
     except StopIteration:
         # no reads
         pass

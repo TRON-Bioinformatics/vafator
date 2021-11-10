@@ -3,12 +3,11 @@ import pysam
 from cyvcf2 import VCF, Writer, Variant
 import os
 from pysam import AlignmentFile
-from pysam.libcalignmentfile import IteratorColumnRegion
 import vafator
 import datetime
 import json
-
-from vafator.pileups import get_insertion_metrics, get_deletion_metrics, get_snv_metrics
+from vafator.pileups import get_insertion_metrics, get_deletion_metrics, get_snv_metrics, get_variant_pileup, \
+    build_variant
 
 
 class Annotator(object):
@@ -76,16 +75,6 @@ class Annotator(object):
                 ]
         return headers
 
-    def _get_variant_pileup(self, variant: Variant, bam: AlignmentFile) -> IteratorColumnRegion:
-
-        chromosome = variant.CHROM
-        position = variant.POS
-        # this function returns the pileups at all positions covered by reads covered the queried position
-        # approximately +- read size bp
-        return bam.pileup(contig=chromosome, start=position-1, stop=position, truncate=True,
-                          min_base_quality=self.base_call_quality_threshold,
-                          min_mapping_quality=self.mapping_quality_threshold)
-
     def _write_batch(self, batch):
         for v in batch:
             self.vcf_writer.write_record(v)
@@ -94,9 +83,12 @@ class Annotator(object):
 
         global_dp = 0
         global_ac = {}
+        vafator_variant = build_variant(variant)
         for i, b in enumerate(bams):
-            pileups = self._get_variant_pileup(variant=variant, bam=b)
-            ac, dp = get_snv_metrics(variant=variant, pileups=pileups)
+            pileups = get_variant_pileup(variant=vafator_variant, bam=b,
+                                         min_base_quality=self.base_call_quality_threshold,
+                                         min_mapping_quality=self.mapping_quality_threshold)
+            ac, dp = get_snv_metrics(variant=vafator_variant, pileups=pileups)
             if len(bams) > 1:
                 variant.INFO["{}_af_{}".format(prefix, i + 1)] = ",".join(
                     [str(self._calculate_af(ac[alt], dp)) for alt in variant.ALT])
@@ -114,9 +106,12 @@ class Annotator(object):
 
         global_dp = 0
         global_ac = 0
+        vafator_variant = build_variant(variant)
         for i, b in enumerate(bams):
-            pileups = self._get_variant_pileup(variant=variant, bam=b)
-            ac, dp = get_insertion_metrics(variant=variant, pileups=pileups)
+            pileups = get_variant_pileup(variant=vafator_variant, bam=b,
+                                         min_base_quality=self.base_call_quality_threshold,
+                                         min_mapping_quality=self.mapping_quality_threshold)
+            ac, dp = get_insertion_metrics(variant=vafator_variant, pileups=pileups)
             af = self._calculate_af(ac, dp)
             if len(bams) > 1:
                 variant.INFO["{}_af_{}".format(prefix, i+1)] = af
@@ -134,9 +129,12 @@ class Annotator(object):
 
         global_dp = 0
         global_ac = 0
+        vafator_variant = build_variant(variant)
         for i, b in enumerate(bams):
-            pileups = self._get_variant_pileup(variant=variant, bam=b)
-            ac, dp = get_deletion_metrics(variant=variant, pileups=pileups)
+            pileups = get_variant_pileup(variant=vafator_variant, bam=b,
+                                         min_base_quality=self.base_call_quality_threshold,
+                                         min_mapping_quality=self.mapping_quality_threshold)
+            ac, dp = get_deletion_metrics(variant=vafator_variant, pileups=pileups)
             af = self._calculate_af(ac, dp)
             if len(bams) > 1:
                 variant.INFO["{}_af_{}".format(prefix, i+1)] = af
