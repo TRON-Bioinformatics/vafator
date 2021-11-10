@@ -18,6 +18,11 @@ def annotator():
                                      epilog=epilog)
     parser.add_argument("--input-vcf", dest="input_vcf", action="store", help="The VCF to annotate", required=True)
     parser.add_argument("--output-vcf", dest="output_vcf", action="store", help="The annotated VCF", required=True)
+    parser.add_argument('--bam', action='append', nargs=2,
+                        metavar=('sample_name', 'bam_file'),
+                        help='A sample name and a BAM file. Can be used multiple times to input multiple samples and '
+                             'multiple BAM files. The same sample name can be used multiple times with different BAMs, '
+                             'this will treated as replicates.')
     parser.add_argument("--normal-bams", dest="normal_bams", nargs='+', action="store", default=[],
                         help="Whitespace-separated list of normal BAMs to analyse")
     parser.add_argument("--tumor-bams", dest="tumor_bams", nargs='+', action="store", default=[],
@@ -26,22 +31,38 @@ def annotator():
                         help="All reads with a mapping quality below this threshold will be filtered out")
     parser.add_argument("--base-call-quality", dest="base_call_quality", action="store", type=int, default=30,
                         help="All bases with a base call quality below this threshold will be filtered out")
-    parser.add_argument("--prefix", dest="prefix", action="store", type=str, default=None,
-                        help="When provided the annotations are preceded by this prefix, otherwise the annotations"
-                             "are named as tumor_af, normal_af, tumor_ac, normal_ac, tumor_dp and normal_dp")
 
     args = parser.parse_args()
 
     logging.info("Vafator starting...")
+
+    bams = {}
+    for sample_name, bam in args.bam:
+        if sample_name in bams:
+            bams[sample_name].append(bam)
+        else:
+            bams[sample_name] = [bam]
+    for bam in args.tumor_bams:
+        if "tumor" in bams:
+            bams["tumor"].append(bam)
+        else:
+            bams["tumor"] = [bam]
+    for bam in args.normal_bams:
+        if "normal" in bams:
+            bams["normal"].append(bam)
+        else:
+            bams["normal"] = [bam]
+
+    if len(bams) == 0:
+        raise ValueError("Please, provide at least one bam file through either --bam, --tumor-bams or --normal-bams")
+
     try:
         annotator = Annotator(
             input_vcf=args.input_vcf,
             output_vcf=args.output_vcf,
-            normal_bams=args.normal_bams,
-            tumor_bams=args.tumor_bams,
+            input_bams=bams,
             mapping_qual_thr=args.mapping_quality,
-            base_call_qual_thr=args.base_call_quality,
-            prefix=args.prefix
+            base_call_qual_thr=args.base_call_quality
         )
         annotator.run()
     except Exception as e:
