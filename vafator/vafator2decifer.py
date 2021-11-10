@@ -162,22 +162,7 @@ def overlap_cna_snp(vcf_samples, max_CN, out_dir):
     return cna_overlaps, cn_states_allsites, filtered_sites
 
 
-def main():
-    parser = argparse.ArgumentParser(description='Generate input for Decifer using VCF file and HATCHet CNA file')
-    parser.add_argument("-V", "--vcf_file", required=True, type=str, help="single or multi-sample VCF file")
-    parser.add_argument("-S", "--samples", required=True, type=str,
-                        help="comma separated list of sample name prefixes to use for VAFator annotations, "
-                             "eg: primary_tumor,metastasis_tumor; the annotations primary_tumor_ac, primary_tumor_dp, "
-                             "etc. will be expected to exist")
-    parser.add_argument("-C", "--cna_file", required=True, type=str, help="HATCHet CNA file: best.seg.ucn ")
-    parser.add_argument("-O", "--out_dir", required=True, default="./", type=str,
-                        help="directory for printing files; please make unique for each patient!")
-    parser.add_argument("-M", "--min_depth", required=True, type=int, help="minimum depth PER sample")
-    parser.add_argument("-A", "--min_alt_depth", required=True, type=int,
-                        help="minimum depth of ALT allele in at least one sample")
-    parser.add_argument("-N", "--max_CN", required=False, default=6, type=int,
-                        help="maximum total copy number for each observed clone")
-    args = parser.parse_args()
+def run_vafator2decifer(args):
 
     vcf_name = os.path.basename(args.vcf_file)
     vcf = VCF(args.vcf_file, gts012=True)
@@ -229,9 +214,3 @@ def main():
     os.system(f"rm {args.out_dir}/snps.bed")
     for sample in samples:
         os.system(f"rm {args.out_dir}/{sample}_cna.bed")
-
-
-if __name__ == '__main__':
-    main()
-
-

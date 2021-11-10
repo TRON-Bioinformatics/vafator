@@ -5,7 +5,7 @@ import logging
 import vafator
 from vafator.annotator import Annotator
 from vafator.multiallelic_filter import MultiallelicFilter
-
+from vafator.vafator2decifer import run_vafator2decifer
 
 epilog = "Copyright (c) 2019-2021 TRON gGmbH (See LICENSE for licensing details)"
 
@@ -72,3 +72,22 @@ def multiallelics_filter():
         logging.error(str(e))
         sys.exit(-1)
     logging.info("Vafator multiallelic filter finished!")
+
+
+def vafator2decifer():
+    parser = argparse.ArgumentParser(description='Generate input for Decifer using VCF file and HATCHet CNA file')
+    parser.add_argument("-V", "--vcf_file", required=True, type=str, help="single or multi-sample VCF file")
+    parser.add_argument("-S", "--samples", required=True, type=str,
+                        help="comma separated list of sample name prefixes to use for VAFator annotations, "
+                             "eg: primary_tumor,metastasis_tumor; the annotations primary_tumor_ac, primary_tumor_dp, "
+                             "etc. will be expected to exist")
+    parser.add_argument("-C", "--cna_file", required=True, type=str, help="HATCHet CNA file: best.seg.ucn ")
+    parser.add_argument("-O", "--out_dir", required=True, default="./", type=str,
+                        help="directory for printing files; please make unique for each patient!")
+    parser.add_argument("-M", "--min_depth", required=True, type=int, help="minimum depth PER sample")
+    parser.add_argument("-A", "--min_alt_depth", required=True, type=int,
+                        help="minimum depth of ALT allele in at least one sample")
+    parser.add_argument("-N", "--max_CN", required=False, default=6, type=int,
+                        help="maximum total copy number for each observed clone")
+    args = parser.parse_args()
+    run_vafator2decifer(args)
