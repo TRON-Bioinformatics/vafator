@@ -36,19 +36,35 @@ Run as follows:
 ```
 vafator --input-vcf /path/yo/your.vcf \
 --output-vcf /path/yo/your_vafator.vcf \ 
---normal-bams /path/to/your_normal.bam \
---tumor-bams /path/to/your_primary_tumor.bam,/path/to/your_metastasis_tumor.bam
+--bam normal /path/to/your_normal.bam \
+--bam primary /path/to/your_primary_tumor.bam \
+--bam metastasis /path/to/your_metastasis_tumor.bam
 ```
 
-Both tumor and normal BAMs are optional, it can annotate only with the tumor BAMs or with the normal BAMs.
+This will add annotations for each of the three samples `normal`, `primary` and `metastasis`: `normal_ac`, 
+`normal_dp`, `normal_af`, `primary_ac`, `primary_dp`, `primary_af`, 
+`metastasis_ac`, `metastasis_dp` and `metastasis_af`. 
 
-If more than one BAM is provided for either the tumor or the normal then the annotations are calculated across all BAMs 
-and for also each of them separately (eg: `tumor_af` provides the allele frequency across all tumor BAMs, `tumor_af_1` 
-and `tumor_af_2` provide the allele frequency on the first and second BAM respectively).
+If more than one BAM is provided for any sample then the annotations are calculated across all BAMs 
+and for also each of them separately (eg: `primary_af` provides the allele frequency across all primary tumor BAMs, 
+`primary_af_1` and `primary_af_2` provide the allele frequency on the first and second BAM respectively).
 
-Also, a `--prefix` parameter can be used to run VAFator multiple times over the same VCF without overwriting its
-annotations. For instance, first `vafator [...] --prefix primary --tumor-bams /path/to/your_primary_tumor.bam` and
-then `vafator [...] --prefix metastasis --tumor-bams /path/to/your_metastasis_tumor.bam`.
+```
+vafator --input-vcf /path/yo/your.vcf \
+--output-vcf /path/yo/your_vafator.vcf \ 
+--bam primary /path/to/your_primary_tumor_1.bam \
+--bam primary /path/to/your_primary_tumor_2.bam
+```
+
+Alternatively, you can use `--normal-bams` and/or `--tumor-bams` and the sample names will be predefined to `normal` 
+and `tumor`respectively.
+
+```
+vafator --input-vcf /path/yo/your.vcf \
+--output-vcf /path/yo/your_vafator.vcf \ 
+--normal-bams /path/to/your_normal.bam \
+--tumor-bams /path/to/your_tumor_1.bam,/path/to/your_tumor_2.bam
+```
 
 Use the parameters `--mapping-quality` and `--base-call-quality` to define the minimum quality values for each read.
 All reads with quality values velow these thresholds will be filtered out.
@@ -77,7 +93,7 @@ VAFator is available as a Nextflow pipeline for convenience.
 
 Run as follows:
 ```
-nextflow run tron-bioinformatics/vafator -r 1.0.0 -profile conda --input_files /path/to/your.tsv
+nextflow run tron-bioinformatics/vafator -r 1.1.0 -profile conda --input_files /path/to/your.tsv
 ```
 
 where `--input_files` expects four tab-separated columns **without a header**:
@@ -94,8 +110,7 @@ Optional parameters:
   variant at the same position is kept)
 * `--base_call_quality`: minimum base call quality, reads with values below will be filtered out (default: 30)
 * `--mapping_quality`: minimum mapping quality, reads with values below will be filtered out (default: 1)
-* `--prefix`: when provided the annotations are preceded by this prefix (e.g.: <PREFIX>_tumor_ac, <PREFIX>_tumor_af, etc), 
-  otherwise the annotations are named as tumor_af, normal_af, tumor_ac, normal_ac, tumor_dp and normal_d
+
 
 ## Support for indels
 
