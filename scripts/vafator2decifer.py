@@ -16,7 +16,7 @@ python vcf_2_decifer.py [OPTIONS]
 import re
 import sys
 import pybedtools as pbt
-from cyvcf2 import VCF
+from cyvcf2 import VCF, Variant
 import os
 import pandas as pd
 import numpy as np
@@ -24,39 +24,37 @@ from collections import defaultdict
 import argparse
 
 
-def filterByDepth(gt_depths, gt_alt_depths, Filter):
+def filterByDepth(variant: Variant, Filter, samples):
     PASS = 1
     missing = 0
-    for i in range(len(gt_depths)):
+    for s in samples:
         # filter if genotype has low depth or is missing
-        if (gt_depths[i] < Filter['MinDepth']):
+        if variant.INFO["{}_dp".format(s)] < Filter['MinDepth']:
             missing += 1
-        # filter if alt allele isn't greater than the specified threshold in at least one sample
-        if not any(np.greater_equal(gt_alt_depths, Filter['MinDepthAltAllele'])):
-            missing += 1
+    # filter if alt allele isn't greater than the specified threshold in at least one sample
+    if not any(np.greater_equal([variant.INFO["{}_ac".format(s)] for s in samples], Filter['MinDepthAltAllele'])):
+        missing += 1
     # (gt_alt_depths[i] < Filter['MinDepthAltAllele'])
     if missing > 0:
         PASS = 0
     return (PASS)
 
 
-def compute_ref_var_depths(vcf, FilterDP):
-    ref_var_depths = defaultdict(
-        list)  # ref_var_depths[char_label] = list of (ref,alt) tuples, one for each sample, in same order as vcf.samples
+def compute_ref_var_depths(vcf, FilterDP, samples):
+    ref_var_depths = defaultdict(list)
+    # ref_var_depths[char_label] = list of (ref,alt) tuples, one for each sample, in same order as vcf.samples
+    variant: Variant
     for variant in vcf:
         if len(variant.ALT) == 1 and variant.var_type == "snp":
-            PASS = filterByDepth(variant.gt_depths, variant.gt_alt_depths, FilterDP)
+            PASS = filterByDepth(variant, FilterDP, samples)
             # print(np.greater_equal(variant.gt_alt_depths,FilterDP['MinDepthAltAllele']))
             if PASS:
-                chrom = variant.CHROM
-                pos = variant.end
-                char_label = ".".join(map(str, [chrom, pos, variant.REF, variant.ALT[0]]))
-
-                for i in range(len(vcf.samples)):
-                    ref = variant.gt_depths[i] - variant.gt_alt_depths[i]
-                    alt = variant.gt_alt_depths[i]
+                char_label = ".".join(map(str, [variant.CHROM, variant.POS, variant.REF, variant.ALT[0]]))
+                for s in samples:
+                    alt = variant.INFO["{}_ac".format(s)]
+                    ref = variant.INFO["{}_dp".format(s)] - alt
                     ref_var_depths[char_label].append((ref, alt))
-    return (ref_var_depths)
+    return ref_var_depths
 
 
 def print_output(vcf, ref_var_depths, cna_overlaps, outdir):
@@ -167,6 +165,10 @@ def overlap_cna_snp(vcf_samples, max_CN, out_dir):
 def main():
     parser = argparse.ArgumentParser(description='Generate input for Decifer using VCF file and HATCHet CNA file')
     parser.add_argument("-V", "--vcf_file", required=True, type=str, help="single or multi-sample VCF file")
+    parser.add_argument("-S", "--samples", required=True, type=str,
+                        help="comma separated list of sample name prefixes to use for VAFator annotations, "
+                             "eg: primary_tumor,metastasis_tumor; the annotations primary_tumor_ac, primary_tumor_dp, "
+                             "etc. will be expected to exist")
     parser.add_argument("-C", "--cna_file", required=True, type=str, help="HATCHet CNA file: best.seg.ucn ")
     parser.add_argument("-O", "--out_dir", required=True, default="./", type=str,
                         help="directory for printing files; please make unique for each patient!")
@@ -185,13 +187,12 @@ def main():
     FilterDP['MinDepth'] = args.min_depth
     FilterDP['MinDepthAltAllele'] = args.min_alt_depth
 
-    num_samples = len(vcf.samples)
-    sample_index = {vcf.samples[i]: i for i in range(len(vcf.samples))}
-    print(vcf.samples)
-    print(type(vcf.samples))
+    samples = args.samples.split(",")
+    num_samples = len(samples)
+    sample_index = {samples[i]: i for i in range(len(samples))}
 
     # ref_var_depths[char_label] = list of (ref,alt) tuples, one for each sample, in same order as vcf.samples
-    ref_var_depths = compute_ref_var_depths(vcf, FilterDP)
+    ref_var_depths = compute_ref_var_depths(vcf, FilterDP, samples)
 
     # print BED file for SNPs
     with open(f"{args.out_dir}/snps.bed", 'w') as out:
@@ -207,7 +208,7 @@ def main():
     print_purities(cna_df, sample_index, num_samples, args.out_dir)
 
     # prepare BED files for CNA intervals for each sample, for overlapping with SNPs
-    for sample in vcf.samples:
+    for sample in samples:
         df = cna_df[cna_df['SAMPLE'] == sample]
         # consider subtracting 1 from start of interval to be compatible with BED format, leave end interval alone
         df.loc[:, 'START'] = df['START']
@@ -217,7 +218,7 @@ def main():
     # overlap SNPs with CNA intervals for each sample
     # cna_overlaps[char_label] = list of tuples of CNA info (one tuple for each sample, in same order as vcf.samples)
     # this function also prints the observed CN state trees for the generatestatetrees function
-    cna_overlaps, cn_states_allsites, filtered_sites = overlap_cna_snp(vcf.samples, args.max_CN, args.out_dir)
+    cna_overlaps, cn_states_allsites, filtered_sites = overlap_cna_snp(samples, args.max_CN, args.out_dir)
 
     # sites may have unique CN states that are duplicate; set them to find unique CN states across sites
     print_unique_CN_states(cn_states_allsites, args.max_CN, args.out_dir)
@@ -226,7 +227,7 @@ def main():
     print_output(vcf, ref_var_depths, cna_overlaps, args.out_dir)
 
     os.system(f"rm {args.out_dir}/snps.bed")
-    for sample in vcf.samples:
+    for sample in samples:
         os.system(f"rm {args.out_dir}/{sample}_cna.bed")
 
 
