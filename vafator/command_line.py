@@ -49,6 +49,7 @@ def annotator():
         sys.exit(-1)
     logging.info("Vafator finished!")
 
+
 def multiallelics_filter():
 
     # set up logger
