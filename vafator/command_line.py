@@ -23,9 +23,9 @@ def annotator():
     parser.add_argument("--tumor-bams", dest="tumor_bams", nargs='+', action="store", default=[],
                         help="Whitespace-separated list of tumor BAMs to analyse")
     parser.add_argument("--mapping-quality", dest="mapping_quality", action="store", type=int, default=0,
-                        help="All reads with a mapping quality lower or equal than this threshold will be filtered out")
+                        help="All reads with a mapping quality below this threshold will be filtered out")
     parser.add_argument("--base-call-quality", dest="base_call_quality", action="store", type=int, default=29,
-                        help="All bases with a base call quality lower or equal than this threshold will be filtered out")
+                        help="All bases with a base call quality below this threshold will be filtered out")
     parser.add_argument("--prefix", dest="prefix", action="store", type=str, default=None,
                         help="When provided the annotations are preceded by this prefix, otherwise the annotations"
                              "are named as tumor_af, normal_af, tumor_ac, normal_ac, tumor_dp and normal_dp")
