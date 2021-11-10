@@ -5,7 +5,7 @@ import pysam
 from logzero import logger
 
 
-class TestAnnotator(TestCase):
+class TestIndels(TestCase):
 
     def test_insertions_pileups(self):
         bam_file = pkg_resources.resource_filename(
