@@ -55,6 +55,47 @@ All reads with quality values velow these thresholds will be filtered out.
 
 Overlapping reads from read pairs are not double counted. The read with the highest base call quality is chosen.
 
+## Filter for multi-allelic variants
+
+Multi-allelic variants are those that have more than one alternative allele (e.g.: A>C,G).
+This tool allows to select the allele with the highest allele frequency and filter out the lower frequency allele.
+
+Run as follows:
+```
+multiallelics-filter --input-vcf /path/to/your_vafator.vcf \
+--output-vcf /path/to/your_vafator_filtered.vcf \
+--tumor-sample-name <SAMPLE> 
+```
+
+The above will look for the annotation `<SAMPLE>_af` and for multi-allelic variants it will filter out those with lower 
+frequencies. Beware, that if the multi-allelic variants are split into more than one line in the VCF nothing will be 
+filtered out.
+
+## Run as a Nextflow pipeline
+
+VAFator is available as a Nextflow pipeline for convenience.
+
+Run as follows:
+```
+nextflow run tron-bioinformatics/vafator -r 1.0.0 -profile conda --input_files /path/to/your.tsv
+```
+
+where `--input_files` expects four tab-separated columns **without a header**:
+
+| Sample name     | VCF                    | Tumor BAMs              |  Normal BAMs            |
+|-----------------|------------------------|-------------------------|-------------------------|
+| sample_1        | /path/to/sample_1.vcf  | /path/to/sample_1_tumor_1.bam,/path/to/sample_1_tumor_2.bam   | /path/to/sample_1_normal.bam   |
+| sample_2        | /path/to/sample_2.vcf  | /path/to/sample_2_tumor.bam   | /path/to/sample_1_normal.bam   |
+
+Optional parameters:
+
+* `--output`: the folder where to publish output
+* `--skip_multiallelic_filter`: skip the filtering of multiallelics by frequency in the tumor (only highest frequency 
+  variant at the same position is kept)
+* `--base_call_quality`: minimum base call quality, reads with values below will be filtered out (default: 30)
+* `--mapping_quality`: minimum mapping quality, reads with values below will be filtered out (default: 1)
+* `--prefix`: when provided the annotations are preceded by this prefix (e.g.: <PREFIX>_tumor_ac, <PREFIX>_tumor_af, etc), 
+  otherwise the annotations are named as tumor_af, normal_af, tumor_ac, normal_ac, tumor_dp and normal_d
 
 ## Support for indels
 
