@@ -104,12 +104,19 @@ Run as follows:
 nextflow run tron-bioinformatics/vafator -r 1.1.0 -profile conda --input_files /path/to/your.tsv
 ```
 
-where `--input_files` expects four tab-separated columns **without a header**:
+where `--input_files` expects three tab-separated columns **without a header**:
 
-| Sample name     | VCF                    | Tumor BAMs              |  Normal BAMs            |
-|-----------------|------------------------|-------------------------|-------------------------|
-| sample_1        | /path/to/sample_1.vcf  | /path/to/sample_1_tumor_1.bam,/path/to/sample_1_tumor_2.bam   | /path/to/sample_1_normal.bam   |
-| sample_2        | /path/to/sample_2.vcf  | /path/to/sample_2_tumor.bam   | /path/to/sample_1_normal.bam   |
+| Patient name     | VCF                    | Sample name:BAM              |
+|-----------------|------------------------|-------------------------|
+| patient_1        | /path/to/sample_1.vcf  | my_tumor:/path/to/sample_1_tumor_1.bam  |
+| patient_1        | /path/to/sample_1.vcf  | my_tumor:/path/to/sample_1_tumor_2.bam   |
+| patient_1        | /path/to/sample_1.vcf  | my_metastasis:/path/to/sample_1_metastasis_1.bam  |
+| patient_1        | /path/to/sample_1.vcf  | my_normal:/path/to/sample_1_normal.bam   |
+| patient_2        | /path/to/sample_2.vcf  | my_tumor:/path/to/sample_2_tumor.bam   |
+| patient_2        | /path/to/sample_2.vcf  | my_normal:/path/to/sample_1_normal.bam   |
+
+The above corresponds to two patients, `patient_1` and `patient_2`. Where for `patient_1` we have four samples of which
+two replicates for a sample named `my_tumor` and two additional samples named `my_metastasis` and `my_normal`.
 
 Optional parameters:
 
