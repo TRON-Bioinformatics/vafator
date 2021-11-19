@@ -15,7 +15,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get --assume-yes install gcc gfortran build-essential wget libfreetype6-dev libpng-dev libopenblas-dev
+        sudo apt-get --assume-yes install build-essential curl
         python -m pip install --upgrade pip
         pip install setuptools wheel
         pip install virtualenv
