@@ -16,19 +16,16 @@ Annotations:
 * **Allele count (AC)**: count of reads supporting the alternate allele. 
 * **Depth of coverage (DP)**: number of reads covering the position of the variant
 
-Outputs a VCF with the following annotations in the INFO field for tumor and normal:
-```
-chr1    12345       .       A       G       .       PASS  tumor_af=0.0;tumor_ac=0;tumor_dp=89;normal_af=0.0196;normal_ac=1;normal_dp=51
-chr2    12345       .       A       G,T       .       PASS  tumor_af=0.2,0.2;tumor_ac=2,2;tumor_dp=10;normal_af=0.0,0.0;normal_ac=0,0;normal_dp=10
-```
-
-**NOTE**: notice that VAFator does not annotate samples in the FORMAT field
-
 
 ## How to install
 
-Install from PyPI (`pip install vafator`) or from bioconda (`conda install bioconda::vafator`). 
+Install from PyPI (`pip install vafator`) or from bioconda (`conda install bioconda::vafator`).
 
+When installaing from PyPI there are some system dependencies that will need to be met: 
+* libcurl
+* libz
+* liblzma
+* htslib=1.14
 
 ## How to run
 
@@ -45,7 +42,7 @@ This will add annotations for each of the three samples `normal`, `primary` and 
 `normal_dp`, `normal_af`, `primary_ac`, `primary_dp`, `primary_af`, 
 `metastasis_ac`, `metastasis_dp` and `metastasis_af`. 
 
-If more than one BAM is provided for any sample then the annotations are calculated across all BAMs 
+If more than one BAM  for the same sample is provided then the annotations are calculated across all BAMs 
 and for also each of them separately (eg: `primary_af` provides the allele frequency across all primary tumor BAMs, 
 `primary_af_1` and `primary_af_2` provide the allele frequency on the first and second BAM respectively).
 
@@ -70,6 +67,17 @@ Use the parameters `--mapping-quality` and `--base-call-quality` to define the m
 All reads with quality values velow these thresholds will be filtered out.
 
 Overlapping reads from read pairs are not double counted. The read with the highest base call quality is chosen.
+
+## Understanding the output
+
+The output is a VCF with the some new annotations in the INFO field for the provided sample names.
+The example below contains vafator annotations for two samples named `normal` and `tumor`.
+```
+chr1    12345       .       A       G       .       PASS  tumor_af=0.0;tumor_ac=0;tumor_dp=89;normal_af=0.0196;normal_ac=1;normal_dp=51
+chr2    12345       .       A       G,T       .       PASS  tumor_af=0.2,0.2;tumor_ac=2,2;tumor_dp=10;normal_af=0.0,0.0;normal_ac=0,0;normal_dp=10
+```
+
+**NOTE**: notice that VAFator does not annotate samples in the FORMAT field, but in the INFO field
 
 ## Filter for multi-allelic variants
 
