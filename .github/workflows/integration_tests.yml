@@ -12,13 +12,17 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
+    - uses: conda-incubator/setup-miniconda@v2
+      with:
+        auto-update-conda: true
+        channels: defaults,conda-forge,bioconda
     - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get --assume-yes install build-essential curl
         python -m pip install --upgrade pip
         pip install setuptools wheel
-        pip install virtualenv
+        conda install pysam=0.17.0
     - name: Install vafator
       run: |
         python setup.py bdist_wheel
