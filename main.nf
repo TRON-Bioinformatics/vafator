@@ -22,8 +22,8 @@ if (params.help) {
 if (params.input_files) {
   Channel
     .fromPath(params.input_files)
-    .splitCsv(header: ['name', 'vcf', 'tumor_bams', 'normal_bams'], sep: "\t")
-    .map{ row-> tuple(row.name, file(row.vcf), row.tumor_bams, row.normal_bams) }
+    .splitCsv(header: ['patient_name', 'vcf', 'bam'], sep: "\t")
+    .map{ row-> tuple(row.patient_name, file(row.vcf), row.bam) }
     .set { input_files }
 } else {
   exit 1, "Input file not specified!"
@@ -31,12 +31,9 @@ if (params.input_files) {
 
 workflow {
     if (params.skip_multiallelic_filter) {
-        VAFATOR(
-            input_files)
+        VAFATOR(input_files.groupTuple(by:[0, 1]))
     }
     else {
-        MULTIALLELIC_FILTER(
-            VAFATOR(
-                input_files))
+        MULTIALLELIC_FILTER(VAFATOR(input_files.groupTuple(by:[0, 1])))
     }
 }
