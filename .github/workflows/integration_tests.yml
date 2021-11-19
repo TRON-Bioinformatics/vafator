@@ -22,7 +22,8 @@ jobs:
         sudo apt-get --assume-yes install build-essential curl
         python -m pip install --upgrade pip
         pip install setuptools wheel
-        conda install pysam=0.17.0
+        # this is needed by cyvcf2 and pysam
+        conda install htslib=1.14
     - name: Install vafator
       run: |
         python setup.py bdist_wheel
