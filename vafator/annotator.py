@@ -100,8 +100,8 @@ class Annotator(object):
                         global_ac[alt] = global_ac.get(alt, 0) + coverage_metrics.ac[alt]
                     global_dp += coverage_metrics.dp
 
-            variant.INFO["{}_af".format(sample)] = ",".join([str(self._calculate_af(global_ac[alt], global_dp)) for alt in variant.ALT])
-            variant.INFO["{}_ac".format(sample)] = ",".join([str(global_ac[alt]) for alt in variant.ALT])
+            variant.INFO["{}_af".format(sample)] = ",".join([str(self._calculate_af(global_ac.get(alt, 0), global_dp)) for alt in variant.ALT])
+            variant.INFO["{}_ac".format(sample)] = ",".join([str(global_ac.get(alt, 0)) for alt in variant.ALT])
             variant.INFO["{}_dp".format(sample)] = global_dp
 
     def _calculate_af(self, ac, dp):
