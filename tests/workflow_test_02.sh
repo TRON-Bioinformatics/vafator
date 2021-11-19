@@ -11,6 +11,4 @@ echo -e "sample_2\t"$test_data"/test_single_sample.vcf\t"$test_data"/TESTX_S1_L0
 nextflow main.nf -profile test --output $output --input_files $test_data/test_input.txt --skip_multiallelic_filter
 
 test -s $output/sample_1/test_tumor_normal.vaf.vcf || { echo "Missing sample 1 output file!"; exit 1; }
-test -s $output/sample_1/test_tumor_normal.vaf.filtered_multiallelics.vcf || { echo "Missing sample 1 output file!"; exit 1; }
 test -s $output/sample_2/test_single_sample.vaf.vcf || { echo "Missing sample 2 output file!"; exit 1; }
-test -s $output/sample_2/test_single_sample.vaf.filtered_multiallelics.vcf || { echo "Missing sample 1 output file!"; exit 1; }
