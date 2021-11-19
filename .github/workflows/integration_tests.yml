@@ -19,7 +19,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get --assume-yes install build-essential curl
+        sudo apt-get --assume-yes install build-essential libcurl4-openssl-dev libz-dev liblzma-dev
         python -m pip install --upgrade pip
         pip install setuptools wheel
         # this is needed by cyvcf2 and pysam
