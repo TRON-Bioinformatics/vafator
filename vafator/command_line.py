@@ -19,7 +19,7 @@ def annotator():
     parser.add_argument("--input-vcf", dest="input_vcf", action="store", help="The VCF to annotate", required=True)
     parser.add_argument("--output-vcf", dest="output_vcf", action="store", help="The annotated VCF", required=True)
     parser.add_argument('--bam', action='append', nargs=2,
-                        metavar=('sample_name', 'bam_file'),
+                        metavar=('sample_name', 'bam_file'), default=[],
                         help='A sample name and a BAM file. Can be used multiple times to input multiple samples and '
                              'multiple BAM files. The same sample name can be used multiple times with different BAMs, '
                              'this will treated as replicates.')

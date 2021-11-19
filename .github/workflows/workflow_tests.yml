@@ -1,4 +1,4 @@
-name: Automated tests
+name: Workflow tests
 
 on: [push]
 

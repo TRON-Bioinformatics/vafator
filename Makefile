@@ -27,3 +27,10 @@ check:
 	test -s output/test3/sample_1/test_tumor_normal.vaf.vcf || { echo "Missing test 3 sample 1 output file!"; exit 1; }
 	test -s output/test3/sample_2/test_single_sample.vaf.vcf || { echo "Missing test 3 sample 2 output file!"; exit 1; }
 
+integration_tests:
+	bash tests/integration_test_00.sh
+	bash tests/integration_test_01.sh
+	bash tests/integration_test_02.sh
+	bash tests/integration_test_03.sh
+
+
