@@ -22,9 +22,10 @@ class Annotator(object):
         self.base_call_quality_threshold = base_call_qual_thr
         self.vcf = VCF(input_vcf)
         # sets a line in the header with the command used to annotate the file
-        self.vafator_header["input_vcf"] = input_vcf
-        self.vafator_header["output_vcf"] = output_vcf
-        self.vafator_header["bams"] = ";".join(["{}:{}".format(s, ",".join(b)) for s, b in input_bams.items()])
+        self.vafator_header["input_vcf"] = os.path.abspath(input_vcf)
+        self.vafator_header["output_vcf"] = os.path.abspath(output_vcf)
+        self.vafator_header["bams"] = ";".join(
+            ["{}:{}".format(s, ",".join([os.path.abspath(b) for b in bams])) for s, bams in input_bams.items()])
         self.vafator_header["mapping_quality_threshold"] = mapping_qual_thr
         self.vafator_header["base_call_quality_threshold"] = base_call_qual_thr
         self.vcf.add_to_header("##vafator_command_line={}".format(json.dumps(self.vafator_header)))
@@ -80,10 +81,10 @@ class Annotator(object):
 
     def _add_stats(self, variant: Variant):
 
-        global_dp = 0
-        global_ac = {}
         vafator_variant = build_variant(variant)
         for sample, bams in self.bam_readers.items():
+            global_dp = 0
+            global_ac = {}
             for i, bam in enumerate(bams):
                 pileups = get_variant_pileup(
                     variant=vafator_variant, bam=bam,
