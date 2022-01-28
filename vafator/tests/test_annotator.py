@@ -146,3 +146,23 @@ class TestAnnotator(TestCase):
         self.assertTrue("normal_af" in info_annotations)
         self.assertTrue("normal_ac" in info_annotations)
         self.assertTrue("normal_dp" in info_annotations)
+
+    def test_annotator_bams_order(self):
+        input_file = pkg_resources.resource_filename(__name__, "resources/test1.vcf")
+        output_vcf = pkg_resources.resource_filename(__name__, "resources/results/test_annotator1_output.vcf")
+        output_vcf_2 = pkg_resources.resource_filename(__name__, "resources/results/test_annotator2_output.vcf")
+        bam1 = pkg_resources.resource_filename(__name__, "resources/COLO_829_n1.bam")
+        bam2 = pkg_resources.resource_filename(__name__, "resources/COLO_829_t1.bam")
+
+        Annotator(input_vcf=input_file, output_vcf=output_vcf, input_bams={"normal": [bam1], "tumor": [bam2]}).run()
+        Annotator(input_vcf=input_file, output_vcf=output_vcf_2, input_bams={"tumor": [bam2], "normal": [bam1]}).run()
+
+        self.assertTrue(os.path.exists(output_vcf))
+        self.assertTrue(os.path.exists(output_vcf_2))
+
+        vcf = VCF(output_vcf)
+        vcf_2 = VCF(output_vcf_2)
+
+        for v, v2 in zip(vcf, vcf_2):
+            self.assertEqual(v.INFO["normal_dp"], v2.INFO["normal_dp"])
+            self.assertEqual(v.INFO["tumor_dp"], v2.INFO["tumor_dp"])
