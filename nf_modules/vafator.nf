@@ -13,7 +13,7 @@ process VAFATOR {
     tag "${patient_name}"
     publishDir "${params.output}/${patient_name}", mode: "copy"
 
-    conda (params.enable_conda ? "bioconda::vafator=1.1.2" : null)
+    conda (params.enable_conda ? "bioconda::vafator=1.1.4" : null)
 
     input:
     tuple val(patient_name), file(vcf), val(bams)
@@ -39,7 +39,7 @@ process MULTIALLELIC_FILTER {
     tag "${name}"
     publishDir "${params.output}/${name}", mode: "copy"
 
-    conda (params.enable_conda ? "bioconda::vafator=1.1.2" : null)
+    conda (params.enable_conda ? "bioconda::vafator=1.1.4" : null)
 
     input:
     tuple val(name), file(vcf)
