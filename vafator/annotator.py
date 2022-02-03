@@ -4,7 +4,9 @@ import os
 import vafator
 import datetime
 import json
-from vafator.pileups import get_variant_pileup, build_variant, get_metrics
+from vafator.pileups import get_variant_pileup, get_metrics
+
+BATCH_SIZE = 10000
 
 
 class Annotator(object):
@@ -81,16 +83,15 @@ class Annotator(object):
 
     def _add_stats(self, variant: Variant):
 
-        vafator_variant = build_variant(variant)
         for sample, bams in self.bam_readers.items():
             global_dp = 0
             global_ac = {}
             for i, bam in enumerate(bams):
                 pileups = get_variant_pileup(
-                    variant=vafator_variant, bam=bam,
+                    variant=variant, bam=bam,
                     min_base_quality=self.base_call_quality_threshold,
                     min_mapping_quality=self.mapping_quality_threshold)
-                coverage_metrics = get_metrics(variant=vafator_variant, pileups=pileups)
+                coverage_metrics = get_metrics(variant=variant, pileups=pileups)
                 if coverage_metrics is not None:
                     if len(bams) > 1:
                         variant.INFO["{}_af_{}".format(sample, i + 1)] = ",".join(
@@ -116,7 +117,7 @@ class Annotator(object):
             self._add_stats(variant)
 
             batch.append(variant)
-            if len(batch) >= 1000:
+            if len(batch) >= BATCH_SIZE:
                 self._write_batch(batch)
                 batch = []
         if len(batch) > 0:
