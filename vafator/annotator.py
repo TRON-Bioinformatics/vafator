@@ -1,10 +1,23 @@
+from collections import Counter
+
 import pysam
 from cyvcf2 import VCF, Writer, Variant
 import os
 import vafator
 import datetime
 import json
-from vafator.pileups import get_variant_pileup, build_variant, get_metrics
+import asyncio
+import time
+from vafator.pileups import get_variant_pileup, get_metrics
+
+BATCH_SIZE = 10000
+
+
+def background(f):
+    def wrapped(*args, **kwargs):
+        return asyncio.get_event_loop().run_in_executor(None, f, *args, **kwargs)
+
+    return wrapped
 
 
 class Annotator(object):
@@ -75,34 +88,32 @@ class Annotator(object):
                     ]
         return headers
 
+    @background
     def _write_batch(self, batch):
         for v in batch:
             self.vcf_writer.write_record(v)
 
     def _add_stats(self, variant: Variant):
-
-        vafator_variant = build_variant(variant)
         for sample, bams in self.bam_readers.items():
             global_dp = 0
-            global_ac = {}
+            global_ac = Counter()
             for i, bam in enumerate(bams):
                 pileups = get_variant_pileup(
-                    variant=vafator_variant, bam=bam,
+                    variant=variant, bam=bam,
                     min_base_quality=self.base_call_quality_threshold,
                     min_mapping_quality=self.mapping_quality_threshold)
-                coverage_metrics = get_metrics(variant=vafator_variant, pileups=pileups)
+                coverage_metrics = get_metrics(variant=variant, pileups=pileups)
                 if coverage_metrics is not None:
                     if len(bams) > 1:
                         variant.INFO["{}_af_{}".format(sample, i + 1)] = ",".join(
                             [str(self._calculate_af(coverage_metrics.ac[alt], coverage_metrics.dp)) for alt in variant.ALT])
                         variant.INFO["{}_ac_{}".format(sample, i + 1)] = ",".join([str(coverage_metrics.ac[alt]) for alt in variant.ALT])
                         variant.INFO["{}_dp_{}".format(sample, i + 1)] = coverage_metrics.dp
-                    for alt in variant.ALT:
-                        global_ac[alt] = global_ac.get(alt, 0) + coverage_metrics.ac[alt]
+                    global_ac.update(coverage_metrics.ac)
                     global_dp += coverage_metrics.dp
 
-            variant.INFO["{}_af".format(sample)] = ",".join([str(self._calculate_af(global_ac.get(alt, 0), global_dp)) for alt in variant.ALT])
-            variant.INFO["{}_ac".format(sample)] = ",".join([str(global_ac.get(alt, 0)) for alt in variant.ALT])
+            variant.INFO["{}_af".format(sample)] = ",".join([str(self._calculate_af(global_ac[alt], global_dp)) for alt in variant.ALT])
+            variant.INFO["{}_ac".format(sample)] = ",".join([str(global_ac[alt]) for alt in variant.ALT])
             variant.INFO["{}_dp".format(sample)] = global_dp
 
     def _calculate_af(self, ac, dp):
@@ -116,11 +127,13 @@ class Annotator(object):
             self._add_stats(variant)
 
             batch.append(variant)
-            if len(batch) >= 1000:
+            if len(batch) >= BATCH_SIZE:
                 self._write_batch(batch)
                 batch = []
         if len(batch) > 0:
             self._write_batch(batch)
+
+        time.sleep(2)
 
         self.vcf_writer.close()
         self.vcf.close()

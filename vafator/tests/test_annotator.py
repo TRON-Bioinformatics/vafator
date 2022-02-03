@@ -4,6 +4,8 @@ from unittest import TestCase
 from cyvcf2 import VCF
 from vafator.annotator import Annotator
 import vafator.tests.utils as test_utils
+import time
+from logzero import logger
 
 
 class TestAnnotator(TestCase):
@@ -134,8 +136,11 @@ class TestAnnotator(TestCase):
         bam_file = pkg_resources.resource_filename(
             __name__,
             "resources/project.NIST_NIST7035_H7AP8ADXX_TAAGGCGA_1_NA12878.bwa.markDuplicates.chr1_1000000_2000000.bam")
+        start = time.time()
         annotator = Annotator(input_vcf=input_file, output_vcf=output_vcf, input_bams={"normal": [bam_file]})
         annotator.run()
+        duration = time.time() - start
+        logger.info("Duration {} seconds".format(round(duration, 3)))
 
         self.assertTrue(os.path.exists(output_vcf))
         n_variants_input = test_utils._get_count_variants(input_file)
