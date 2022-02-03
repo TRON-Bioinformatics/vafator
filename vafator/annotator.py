@@ -8,7 +8,6 @@ import datetime
 import json
 import asyncio
 import time
-from logzero import logger
 from vafator.pileups import get_variant_pileup, get_metrics
 
 BATCH_SIZE = 10000
@@ -95,7 +94,6 @@ class Annotator(object):
             self.vcf_writer.write_record(v)
 
     def _add_stats(self, variant: Variant):
-        logger.info("Starting _add_stats()")
         for sample, bams in self.bam_readers.items():
             global_dp = 0
             global_ac = Counter()
