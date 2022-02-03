@@ -2,6 +2,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import List, Union
 from cyvcf2 import Variant
+from logzero import logger
 from pysam.libcalignmentfile import IteratorColumnRegion, AlignmentFile
 from vafator.tests.utils import VafatorVariant
 
@@ -20,6 +21,7 @@ def is_deletion(variant: Variant):
 
 def get_variant_pileup(
         variant: Union[Variant, VafatorVariant], bam: AlignmentFile, min_base_quality, min_mapping_quality) -> IteratorColumnRegion:
+    logger.info("Starting get_variant_pileup()")
     position = variant.POS
     # this function returns the pileups at all positions covered by reads covered the queried position
     # approximately +- read size bp
@@ -37,6 +39,7 @@ class CoverageMetrics:
 
 
 def get_metrics(variant: Variant, pileups: IteratorColumnRegion) -> CoverageMetrics:
+    logger.info("Starting get_metrics()")
     if is_snp(variant):
         return get_snv_metrics(pileups)
     elif is_insertion(variant):
@@ -47,6 +50,7 @@ def get_metrics(variant: Variant, pileups: IteratorColumnRegion) -> CoverageMetr
 
 
 def get_insertion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> CoverageMetrics:
+    logger.info("Starting get_insertion_metrics()")
     ac = {alt.upper(): 0 for alt in variant.ALT}
     dp = 0
     position = variant.POS
@@ -79,6 +83,7 @@ def get_insertion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> Co
 
 
 def get_deletion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> CoverageMetrics:
+    logger.info("Starting get_deletion_metrics()")
     ac = {alt.upper(): 0 for alt in variant.ALT}
     dp = 0
     position = variant.POS
@@ -107,14 +112,14 @@ def get_deletion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> Cov
 
 
 def get_snv_metrics(pileups: IteratorColumnRegion) -> CoverageMetrics:
-    dp = 0
-    ac = Counter()
+    logger.info("Starting get_snv_metrics()")
     try:
         pileup = next(pileups)
         bases = [s.upper() for s in pileup.get_query_sequences()]
-        dp += len(bases)
-        ac = ac + Counter(bases)
+        dp = len(bases)
+        ac = Counter(bases)
     except StopIteration:
         # no reads
-        pass
+        dp = 0
+        ac = Counter()
     return CoverageMetrics(ac=ac, dp=dp)

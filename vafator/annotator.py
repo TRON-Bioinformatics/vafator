@@ -1,3 +1,5 @@
+from collections import Counter
+
 import pysam
 from cyvcf2 import VCF, Writer, Variant
 import os
@@ -6,6 +8,7 @@ import datetime
 import json
 import asyncio
 import time
+from logzero import logger
 from vafator.pileups import get_variant_pileup, get_metrics
 
 BATCH_SIZE = 10000
@@ -92,10 +95,10 @@ class Annotator(object):
             self.vcf_writer.write_record(v)
 
     def _add_stats(self, variant: Variant):
-
+        logger.info("Starting _add_stats()")
         for sample, bams in self.bam_readers.items():
             global_dp = 0
-            global_ac = {}
+            global_ac = Counter()
             for i, bam in enumerate(bams):
                 pileups = get_variant_pileup(
                     variant=variant, bam=bam,
@@ -108,12 +111,11 @@ class Annotator(object):
                             [str(self._calculate_af(coverage_metrics.ac[alt], coverage_metrics.dp)) for alt in variant.ALT])
                         variant.INFO["{}_ac_{}".format(sample, i + 1)] = ",".join([str(coverage_metrics.ac[alt]) for alt in variant.ALT])
                         variant.INFO["{}_dp_{}".format(sample, i + 1)] = coverage_metrics.dp
-                    for alt in variant.ALT:
-                        global_ac[alt] = global_ac.get(alt, 0) + coverage_metrics.ac[alt]
+                    global_ac.update(coverage_metrics.ac)
                     global_dp += coverage_metrics.dp
 
-            variant.INFO["{}_af".format(sample)] = ",".join([str(self._calculate_af(global_ac.get(alt, 0), global_dp)) for alt in variant.ALT])
-            variant.INFO["{}_ac".format(sample)] = ",".join([str(global_ac.get(alt, 0)) for alt in variant.ALT])
+            variant.INFO["{}_af".format(sample)] = ",".join([str(self._calculate_af(global_ac[alt], global_dp)) for alt in variant.ALT])
+            variant.INFO["{}_ac".format(sample)] = ",".join([str(global_ac[alt]) for alt in variant.ALT])
             variant.INFO["{}_dp".format(sample)] = global_dp
 
     def _calculate_af(self, ac, dp):
@@ -133,7 +135,7 @@ class Annotator(object):
         if len(batch) > 0:
             self._write_batch(batch)
 
-        time.sleep(5)
+        time.sleep(2)
 
         self.vcf_writer.close()
         self.vcf.close()
