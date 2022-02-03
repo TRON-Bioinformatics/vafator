@@ -1,43 +1,29 @@
 from collections import Counter
 from dataclasses import dataclass
-from typing import List
+from typing import List, Union
 from cyvcf2 import Variant
 from pysam.libcalignmentfile import IteratorColumnRegion, AlignmentFile
+from tests.utils import VafatorVariant
 
 
-@dataclass
-class VafatorVariant:
-    chromosome: str
-    position: int
-    reference: str
-    alternative: List[str]
-
-    def is_snp(self):
-        return len(self.reference) == 1 and len(self.alternative[0]) == 1
-
-    def is_insertion(self):
-        return len(self.reference) == 1 and len(self.alternative[0]) > 1
-
-    def is_deletion(self):
-        return len(self.alternative[0]) == 1 and len(self.reference) > 1
+def is_snp(variant: Variant):
+    return len(variant.REF) == 1 and len(variant.ALT[0]) == 1
 
 
-def build_variant(variant: Variant) -> VafatorVariant:
-    return VafatorVariant(
-        chromosome=variant.CHROM,
-        position=variant.POS,
-        reference=variant.REF,
-        alternative=variant.ALT
-    )
+def is_insertion(variant: Variant):
+    return len(variant.REF) == 1 and len(variant.ALT[0]) > 1
+
+
+def is_deletion(variant: Variant):
+    return len(variant.ALT[0]) == 1 and len(variant.REF) > 1
 
 
 def get_variant_pileup(
-        variant: VafatorVariant, bam: AlignmentFile, min_base_quality, min_mapping_quality) -> IteratorColumnRegion:
-    chromosome = variant.chromosome
-    position = variant.position
+        variant: Union[Variant, VafatorVariant], bam: AlignmentFile, min_base_quality, min_mapping_quality) -> IteratorColumnRegion:
+    position = variant.POS
     # this function returns the pileups at all positions covered by reads covered the queried position
     # approximately +- read size bp
-    return bam.pileup(contig=chromosome, start=position - 1, stop=position,
+    return bam.pileup(contig=variant.CHROM, start=position - 1, stop=position,
                       truncate=True,                    # returns only this column
                       max_depth=0,                      # disables maximum depth
                       min_base_quality=min_base_quality,
@@ -50,23 +36,23 @@ class CoverageMetrics:
     dp: int
 
 
-def get_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion) -> CoverageMetrics:
-    if variant.is_snp():
+def get_metrics(variant: Variant, pileups: IteratorColumnRegion) -> CoverageMetrics:
+    if is_snp(variant):
         return get_snv_metrics(pileups)
-    elif variant.is_insertion():
+    elif is_insertion(variant):
         return get_insertion_metrics(variant, pileups)
-    elif variant.is_deletion():
+    elif is_deletion(variant):
         return get_deletion_metrics(variant, pileups)
     return None
 
 
-def get_insertion_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion) -> CoverageMetrics:
-    ac = {alt.upper(): 0 for alt in variant.alternative}
+def get_insertion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> CoverageMetrics:
+    ac = {alt.upper(): 0 for alt in variant.ALT}
     dp = 0
-    position = variant.position
-    insertion_length = len(variant.alternative[0]) - len(variant.reference)
-    insertion = variant.alternative[0][1:]
-    alt_upper = variant.alternative[0].upper()
+    position = variant.POS
+    insertion_length = len(variant.ALT[0]) - len(variant.REF)
+    insertion = variant.ALT[0][1:]
+    alt_upper = variant.ALT[0].upper()
     try:
         pileups = [p for p in next(pileups).pileups if p.indel > 0]
         dp += len(pileups)
@@ -92,12 +78,12 @@ def get_insertion_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion
     return CoverageMetrics(ac=ac, dp=dp)
 
 
-def get_deletion_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion) -> CoverageMetrics:
-    ac = {alt.upper(): 0 for alt in variant.alternative}
+def get_deletion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> CoverageMetrics:
+    ac = {alt.upper(): 0 for alt in variant.ALT}
     dp = 0
-    position = variant.position
-    deletion_length = len(variant.reference) - len(variant.alternative[0])
-    alt_upper = variant.alternative[0].upper()
+    position = variant.POS
+    deletion_length = len(variant.REF) - len(variant.ALT[0])
+    alt_upper = variant.ALT[0].upper()
     try:
         pileups = [p for p in next(pileups).pileups if p.indel < 0]
         dp += len(pileups)
@@ -118,12 +104,6 @@ def get_deletion_metrics(variant: VafatorVariant, pileups: IteratorColumnRegion)
         # no reads
         pass
     return CoverageMetrics(ac=ac, dp=dp)
-
-
-def _initialize_empty_count(bases_counts, base):
-    if bases_counts.get(base) is None:
-        bases_counts[base] = 0
-    return bases_counts
 
 
 def get_snv_metrics(pileups: IteratorColumnRegion) -> CoverageMetrics:
