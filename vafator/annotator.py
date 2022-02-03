@@ -4,9 +4,18 @@ import os
 import vafator
 import datetime
 import json
+import asyncio
+import time
 from vafator.pileups import get_variant_pileup, get_metrics
 
 BATCH_SIZE = 10000
+
+
+def background(f):
+    def wrapped(*args, **kwargs):
+        return asyncio.get_event_loop().run_in_executor(None, f, *args, **kwargs)
+
+    return wrapped
 
 
 class Annotator(object):
@@ -77,6 +86,7 @@ class Annotator(object):
                     ]
         return headers
 
+    @background
     def _write_batch(self, batch):
         for v in batch:
             self.vcf_writer.write_record(v)
@@ -122,6 +132,8 @@ class Annotator(object):
                 batch = []
         if len(batch) > 0:
             self._write_batch(batch)
+
+        time.sleep(5)
 
         self.vcf_writer.close()
         self.vcf.close()

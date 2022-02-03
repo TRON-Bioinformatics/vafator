@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import List, Union
 from cyvcf2 import Variant
 from pysam.libcalignmentfile import IteratorColumnRegion, AlignmentFile
-from tests.utils import VafatorVariant
+from vafator.tests.utils import VafatorVariant
 
 
 def is_snp(variant: Variant):
