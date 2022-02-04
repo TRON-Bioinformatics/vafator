@@ -54,24 +54,25 @@ def get_insertion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> Co
     insertion = variant.ALT[0][1:]
     alt_upper = variant.ALT[0].upper()
     try:
-        pileups = [p for p in next(pileups).pileups if p.indel > 0]
+        pileups = next(pileups).pileups
         dp += len(pileups)
         for p in pileups:
-            # read with an insertion
-            start = p.alignment.reference_start
-            relative_position = 0
-            for cigar_type, cigar_length in p.alignment.cigartuples:
-                if cigar_type in [0, 2, 3, 7, 8]:  # consumes reference M, D, N, =, X
-                    start += cigar_length
-                    if start > position:
-                        break
-                if cigar_type in [0, 1, 4, 7, 8]:  # consumes query M, I, S, =, X
-                    relative_position += cigar_length
-                if cigar_type == 1:  # does not count I
-                    insertion_in_query = p.alignment.query[relative_position:relative_position + insertion_length]
-                    if start == position and cigar_length == insertion_length and \
-                            insertion == insertion_in_query:
-                        ac[alt_upper] = ac[alt_upper] + 1
+            if p.indel > 0:
+                # read with an insertion
+                start = p.alignment.reference_start
+                relative_position = 0
+                for cigar_type, cigar_length in p.alignment.cigartuples:
+                    if cigar_type in [0, 2, 3, 7, 8]:  # consumes reference M, D, N, =, X
+                        start += cigar_length
+                        if start > position:
+                            break
+                    if cigar_type in [0, 1, 4, 7, 8]:  # consumes query M, I, S, =, X
+                        relative_position += cigar_length
+                    if cigar_type == 1:  # does not count I
+                        insertion_in_query = p.alignment.query[relative_position:relative_position + insertion_length]
+                        if start == position and cigar_length == insertion_length and \
+                                insertion == insertion_in_query:
+                            ac[alt_upper] = ac[alt_upper] + 1
     except StopIteration:
         # no reads
         pass
@@ -85,21 +86,22 @@ def get_deletion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> Cov
     deletion_length = len(variant.REF) - len(variant.ALT[0])
     alt_upper = variant.ALT[0].upper()
     try:
-        pileups = [p for p in next(pileups).pileups if p.indel < 0]
+        pileups = next(pileups).pileups
         dp += len(pileups)
-        for r in pileups:
-            # read with a deletion
-            start = r.alignment.reference_start
-            for cigar_type, cigar_length in r.alignment.cigartuples:
-                if cigar_type in [0, 3, 7, 8]:  # consumes reference M, N, =, X
-                    start += cigar_length
-                elif cigar_type == 2:  # D
-                    if start == position and cigar_length == deletion_length:
-                        ac[alt_upper] = ac[alt_upper] + 1
-                    else:
+        for p in pileups:
+            if p.indel < 0:
+                # read with a deletion
+                start = p.alignment.reference_start
+                for cigar_type, cigar_length in p.alignment.cigartuples:
+                    if cigar_type in [0, 3, 7, 8]:  # consumes reference M, N, =, X
                         start += cigar_length
-                if start > position:
-                    break
+                    elif cigar_type == 2:  # D
+                        if start == position and cigar_length == deletion_length:
+                            ac[alt_upper] = ac[alt_upper] + 1
+                        else:
+                            start += cigar_length
+                    if start > position:
+                        break
     except StopIteration:
         # no reads
         pass
