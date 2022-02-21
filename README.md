@@ -101,38 +101,19 @@ VAFator is available as a Nextflow pipeline for convenience.
 
 Run as follows:
 ```
-nextflow run tron-bioinformatics/vafator -r 1.1.0 -profile conda --input_files /path/to/your.tsv
+nextflow run tron-bioinformatics/tronflow-vcf-postprocessing -r 2.2.0 -profile conda ...
 ```
 
-where `--input_files` expects three tab-separated columns **without a header**:
-
-| Patient name     | VCF                    | Sample name:BAM              |
-|-----------------|------------------------|-------------------------|
-| patient_1        | /path/to/sample_1.vcf  | my_tumor:/path/to/sample_1_tumor_1.bam  |
-| patient_1        | /path/to/sample_1.vcf  | my_tumor:/path/to/sample_1_tumor_2.bam   |
-| patient_1        | /path/to/sample_1.vcf  | my_metastasis:/path/to/sample_1_metastasis_1.bam  |
-| patient_1        | /path/to/sample_1.vcf  | my_normal:/path/to/sample_1_normal.bam   |
-| patient_2        | /path/to/sample_2.vcf  | my_tumor:/path/to/sample_2_tumor.bam   |
-| patient_2        | /path/to/sample_2.vcf  | my_normal:/path/to/sample_1_normal.bam   |
-
-The above corresponds to two patients, `patient_1` and `patient_2`. Where for `patient_1` we have four samples of which
-two replicates for a sample named `my_tumor` and two additional samples named `my_metastasis` and `my_normal`.
-
-Optional parameters:
-
-* `--output`: the folder where to publish output
-* `--skip_multiallelic_filter`: skip the filtering of multiallelics by frequency in the tumor (only highest frequency 
-  variant at the same position is kept)
-* `--base_call_quality`: minimum base call quality, reads with values below will be filtered out (default: 30)
-* `--mapping_quality`: minimum mapping quality, reads with values below will be filtered out (default: 1)
+See https://github.com/TRON-Bioinformatics/tronflow-vcf-postprocessing for more details
 
 
 ## Support for indels
 
 VAFator provides equivalent annotations for indels. Depth of coverage and allele frequency are calculated on the 
 position immediately before the indel. Only insertions and deletions as recorded in the CIGAR matching the respective 
-coordinates and sequence from the VCF file are taken into account. Any read supporting a similar but not equal indel
-will not be counted. 
+coordinates and sequence from the VCF file are taken into account. Any read supporting a similar but not identical indel
+is not counted. 
+
 Also, multiallelic mutations are not supported for indels.
 
 
