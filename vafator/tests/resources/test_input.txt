@@ -1,0 +1,5 @@
+sample_1	/home/priesgo/src/github/vafator/vafator/tests/resources/test_tumor_normal.vcf	my_tumor:/home/priesgo/src/github/vafator/vafator/tests/resources/TESTX_S1_L001.bam
+sample_1	/home/priesgo/src/github/vafator/vafator/tests/resources/test_tumor_normal.vcf	my_normal:/home/priesgo/src/github/vafator/vafator/tests/resources/TESTX_S1_L002.bam
+sample_2	/home/priesgo/src/github/vafator/vafator/tests/resources/test_single_sample.vcf	my_tumor:/home/priesgo/src/github/vafator/vafator/tests/resources/TESTX_S1_L001.bam
+sample_2	/home/priesgo/src/github/vafator/vafator/tests/resources/test_single_sample.vcf	my_tumor:/home/priesgo/src/github/vafator/vafator/tests/resources/TESTX_S1_L002.bam
+sample_2	/home/priesgo/src/github/vafator/vafator/tests/resources/test_single_sample.vcf	my_normal:/home/priesgo/src/github/vafator/vafator/tests/resources/TESTX_S1_L001.bam
