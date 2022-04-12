@@ -53,7 +53,7 @@ def compute_ref_var_depths(vcf, FilterDP, samples):
                 for s in samples:
                     alt = variant.INFO["{}_ac".format(s)]
                     ref = variant.INFO["{}_dp".format(s)] - alt
-                    ref_var_depths[char_label].append((ref, alt))
+                    ref_var_depths[char_label].append((int(ref), int(alt)))
     return ref_var_depths
 
 
