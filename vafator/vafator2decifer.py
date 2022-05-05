@@ -24,17 +24,24 @@ from collections import defaultdict
 import argparse
 
 
-def filterByDepth(variant: Variant, Filter, samples):
+def filterByDepthAndVaf(variant: Variant, Filter, samples):
+
     PASS = 1
     missing = 0
+
     for s in samples:
         # filter if genotype has low depth or is missing
         if variant.INFO["{}_dp".format(s)] < Filter['MinDepth']:
             missing += 1
+
     # filter if alt allele isn't greater than the specified threshold in at least one sample
     if not any(np.greater_equal([variant.INFO["{}_ac".format(s)] for s in samples], Filter['MinDepthAltAllele'])):
         missing += 1
-    # (gt_alt_depths[i] < Filter['MinDepthAltAllele'])
+
+    # filter if VAF  isn't greater than the specified threshold in at least one sample
+    if not any(np.greater_equal([variant.INFO["{}_af".format(s)] for s in samples], Filter['MinVAF'])):
+        missing += 1
+
     if missing > 0:
         PASS = 0
     return (PASS)
@@ -46,7 +53,7 @@ def compute_ref_var_depths(vcf, FilterDP, samples):
     variant: Variant
     for variant in vcf:
         if len(variant.ALT) == 1 and variant.var_type == "snp":
-            PASS = filterByDepth(variant, FilterDP, samples)
+            PASS = filterByDepthAndVaf(variant, FilterDP, samples)
             # print(np.greater_equal(variant.gt_alt_depths,FilterDP['MinDepthAltAllele']))
             if PASS:
                 char_label = ".".join(map(str, [variant.CHROM, variant.POS, variant.REF, variant.ALT[0]]))
@@ -57,31 +64,37 @@ def compute_ref_var_depths(vcf, FilterDP, samples):
     return ref_var_depths
 
 
-def print_output(vcf, ref_var_depths, cna_overlaps, outdir):
+def print_output(ref_var_depths, cna_overlaps, outdir, samples):
     char_index = 0
     chars = ref_var_depths.keys() & cna_overlaps.keys()
     header = [str(len(chars)) + " #characters"]
-    header.append(str(len(vcf.samples)) + " #samples")
+    header.append(str(len(samples)) + " #samples")
     header.append("#sample_index\tsample_label\tcharacter_index\tcharacter_label\tref\tvar")
-    print(header)
+    # print(header)
     with open(f"{outdir}/decifer.input.tsv", 'w') as out:
         print("\n".join(header), file=out)
         for char_label in ref_var_depths:
             if char_label in cna_overlaps:
-                for i in range(len(vcf.samples)):
+                for i in range(len(samples)):
                     r, v = ref_var_depths[char_label][i][0], ref_var_depths[char_label][i][1]
-                    to_print = [i, vcf.samples[i], char_index, char_label, r, v]
+                    to_print = [i, samples[i], char_index, char_label, r, v]
                     cnas = cna_overlaps[char_label][i]
                     to_print.extend(cnas)
                     print("\t".join(map(str, to_print)), file=out)
-                    # print(i, vcf.samples[i], char_index, char_label, r, v)
+                    # print(i, samples[i], char_index, char_label, r, v)
                 char_index += 1
 
 
-def print_purities(cna_df, sample_index, num_samples, outdir):
+def get_purities(cna_df, num_samples, min_purity):
     purities = {}
     for i, row in cna_df.head(num_samples + 1).iterrows():
-        purities[row['SAMPLE']] = 1.0 - row['u_normal']
+        purity = 1.0 - row['u_normal']
+        if purity >= min_purity:
+            purities[row['SAMPLE']] = purity
+    return purities
+
+
+def print_purities(purities, sample_index, num_samples, outdir):
     with open(f"{outdir}/decifer.purity.tsv", 'w') as out:
         for sample in sample_index:
             print(sample_index[sample], purities[sample], file=out, sep="\t")
@@ -122,11 +135,10 @@ def print_filtered_sites(filtered_sites, cna_overlaps, outdir):
         print("fraction: ", float(filtered / total), file=out)
 
 
-def overlap_cna_snp(vcf_samples, max_CN, out_dir):
+def overlap_cna_snp(vcf_samples, max_CN, snps, out_dir):
     cna_overlaps = defaultdict(list)
     cn_states_allsites = []  # a list of tuples
     filtered_sites = set()  # sites filtered out because of high CN
-    snps = pbt.BedTool(f"{out_dir}/snps.bed")
     # for each sample in VCF, intersect it's SNVs with sample-specific CNAs
     for sample in vcf_samples:
         sample_cnas = pbt.BedTool(f"{out_dir}/{sample}_cna.bed")
@@ -164,36 +176,57 @@ def overlap_cna_snp(vcf_samples, max_CN, out_dir):
 
 def run_vafator2decifer(args):
 
-    vcf_name = os.path.basename(args.vcf_file)
     vcf = VCF(args.vcf_file, gts012=True)
+    num_samples = len(args.samples.split(",")) if args.samples is not None else 0
+
+    # Load in CNA information
+    cna_df = pd.read_csv(args.cna_file, sep='\t', index_col=False)
+
+    # get purities and filter by min_purity
+    purities = get_purities(cna_df, num_samples, args.min_purity)
+
+    # restrict samples considered in VCF and CNA file to those that have purity > min_purity
+    restricted_samples = list(purities.keys())
+    cna_df = cna_df.loc[cna_df['SAMPLE'].isin(list(purities.keys()))]
+    # print new CNA file, filtering out samples below min_purity
+    cna_df.to_csv(f"{args.out_dir}/best.seg.ucn", sep="\t", index=False)
+    if args.snp_file:
+        snp_df = pd.read_csv(args.snp_file, sep='\t', index_col=False, header=None)
+        snp_df = snp_df.loc[snp_df[2].isin(list(purities.keys()))]
+        # rearrange columns for decifer
+        snp_df = snp_df[[2, 0, 1, 3, 4]]
+        snp_df.to_csv(f"{args.out_dir}/snpfile.1bed", sep="\t", index=False, header=False)
+
+    num_samples = len(restricted_samples)
+    # print purity information
+    sample_index = {restricted_samples[i]: i for i in range(num_samples)}
+    print_purities(purities, sample_index, num_samples, args.out_dir)
 
     # Filtering criteria
-    FilterDP = {}
-    FilterDP['MinDepth'] = args.min_depth
-    FilterDP['MinDepthAltAllele'] = args.min_alt_depth
-
-    samples = args.samples.split(",")
-    num_samples = len(samples)
-    sample_index = {samples[i]: i for i in range(len(samples))}
+    Filter = {}
+    Filter['MinDepth'] = args.min_depth
+    Filter['MinDepthAltAllele'] = args.min_alt_depth
+    Filter['MinVAF'] = args.min_vaf
 
     # ref_var_depths[char_label] = list of (ref,alt) tuples, one for each sample, in same order as vcf.samples
-    ref_var_depths = compute_ref_var_depths(vcf, FilterDP, samples)
+    ref_var_depths = compute_ref_var_depths(vcf, Filter, samples=restricted_samples)
 
     # print BED file for SNPs
     with open(f"{args.out_dir}/snps.bed", 'w') as out:
         print("chrom\tstart\tend\tREF\tALT", file=out)
-        for chr_label in ref_var_depths:
+        # sort ref_var_depths by the first two parts of chr_label
+        for chr_label in sorted(ref_var_depths, key=lambda x: (x.split('.')[0], int(x.split('.')[1]))):
             pos = chr_label.split(".")
             # subtract 1 from position to create interval in BED format
             print(pos[0], int(pos[1]) - 1, int(pos[1]), pos[2], pos[3], sep="\t", file=out)
 
-    # Load in CNA information
-    cna_df = pd.read_csv(args.cna_file, sep='\t', index_col=False)
-    # print purity information
-    print_purities(cna_df, sample_index, num_samples, args.out_dir)
+    snps = pbt.BedTool(f"{args.out_dir}/snps.bed")
+    if args.exclude_list:
+        blist = pbt.BedTool(f"{args.exclude_list}")
+        snps = snps.subtract(blist)
 
     # prepare BED files for CNA intervals for each sample, for overlapping with SNPs
-    for sample in samples:
+    for sample in restricted_samples:
         df = cna_df[cna_df['SAMPLE'] == sample]
         # consider subtracting 1 from start of interval to be compatible with BED format, leave end interval alone
         df.loc[:, 'START'] = df['START']
@@ -203,14 +236,14 @@ def run_vafator2decifer(args):
     # overlap SNPs with CNA intervals for each sample
     # cna_overlaps[char_label] = list of tuples of CNA info (one tuple for each sample, in same order as vcf.samples)
     # this function also prints the observed CN state trees for the generatestatetrees function
-    cna_overlaps, cn_states_allsites, filtered_sites = overlap_cna_snp(samples, args.max_CN, args.out_dir)
+    cna_overlaps, cn_states_allsites, filtered_sites = overlap_cna_snp(restricted_samples, args.max_CN, snps, args.out_dir)
 
     # sites may have unique CN states that are duplicate; set them to find unique CN states across sites
     print_unique_CN_states(cn_states_allsites, args.max_CN, args.out_dir)
     print_filtered_sites(filtered_sites, cna_overlaps, args.out_dir)
 
-    print_output(vcf, ref_var_depths, cna_overlaps, args.out_dir)
+    print_output(ref_var_depths, cna_overlaps, args.out_dir, restricted_samples)
 
     os.system(f"rm {args.out_dir}/snps.bed")
-    for sample in samples:
+    for sample in restricted_samples:
         os.system(f"rm {args.out_dir}/{sample}_cna.bed")

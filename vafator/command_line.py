@@ -111,5 +111,11 @@ def vafator2decifer():
                         help="minimum depth of ALT allele in at least one sample")
     parser.add_argument("-N", "--max_CN", required=False, default=6, type=int,
                         help="maximum total copy number for each observed clone")
+    parser.add_argument("-B", "--exclude_list", required=False, default=None, type=str,
+                        help="BED file of genomic regions to exclude")
+    parser.add_argument("-p", "--min_purity", required=False, default=0.0, type=float,
+                        help="minimum purity to consider samples")
+    parser.add_argument("-S", "--snp_file", required=False, default=None, type=str,
+                        help="HATCHet file containing germline SNP counts in tumor samples, baf/tumor.1bed")
     args = parser.parse_args()
     run_vafator2decifer(args)
