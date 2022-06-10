@@ -115,7 +115,7 @@ def vafator2decifer():
                         help="BED file of genomic regions to exclude")
     parser.add_argument("-p", "--min_purity", required=False, default=0.0, type=float,
                         help="minimum purity to consider samples")
-    parser.add_argument("-S", "--snp_file", required=False, default=None, type=str,
+    parser.add_argument("--snp_file", required=False, default=None, type=str,
                         help="HATCHet file containing germline SNP counts in tumor samples, baf/tumor.1bed")
     args = parser.parse_args()
     run_vafator2decifer(args)
