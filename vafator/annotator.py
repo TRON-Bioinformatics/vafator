@@ -8,6 +8,7 @@ import datetime
 import json
 import asyncio
 import time
+from scipy.stats import binom
 from vafator.pileups import get_variant_pileup, get_metrics
 
 BATCH_SIZE = 10000
@@ -78,6 +79,13 @@ class Annotator(object):
                 'Type': 'Integer',
                 'Number': 'A'
             })
+            headers.append({
+                'ID': "{}_pw".format(s),
+                'Description': "Probability of an undetected mutation given the observed supporting reads (AC), "
+                               "the observed total coverage (DP) and the provided tumor purity",
+                'Type': 'Float',
+                'Number': 'A'
+            })
 
             if len(bams) > 1:
                 for i, bam in enumerate(bams, start=1):
@@ -91,7 +99,12 @@ class Annotator(object):
                          'Type': 'Float', 'Number': '1'},
                         {'ID': "{}_ac_{}".format(s, i),
                          'Description': "Allele count for the alternate alleles in the {} sample {}".format(s, n),
-                         'Type': 'Integer', 'Number': 'A'}
+                         'Type': 'Integer', 'Number': 'A'},
+                        {'ID': "{}_pw_{}".format(s, i),
+                         'Description': "Probability of an undetected mutation given the observed supporting "
+                                        "reads (AC), the observed total coverage (DP) and the provided tumor "
+                                        "purity in the {} sample {}".format(s, n),
+                         'Type': 'Float', 'Number': 'A'}
                     ]
         return headers
 
@@ -116,15 +129,27 @@ class Annotator(object):
                             [str(self._calculate_af(coverage_metrics.ac[alt], coverage_metrics.dp)) for alt in variant.ALT])
                         variant.INFO["{}_ac_{}".format(sample, i + 1)] = ",".join([str(coverage_metrics.ac[alt]) for alt in variant.ALT])
                         variant.INFO["{}_dp_{}".format(sample, i + 1)] = coverage_metrics.dp
+                        variant.INFO["{}_pw_{}".format(sample, i + 1)] = ",".join(
+                            [str(self._calculate_power(ac=coverage_metrics.ac[alt], dp=coverage_metrics.dp)) for alt in variant.ALT])
                     global_ac.update(coverage_metrics.ac)
                     global_dp += coverage_metrics.dp
 
             variant.INFO["{}_af".format(sample)] = ",".join([str(self._calculate_af(global_ac[alt], global_dp)) for alt in variant.ALT])
             variant.INFO["{}_ac".format(sample)] = ",".join([str(global_ac[alt]) for alt in variant.ALT])
             variant.INFO["{}_dp".format(sample)] = global_dp
+            variant.INFO["{}_pw".format(sample)] = ",".join([str(self._calculate_power(ac=global_ac[alt], dp=global_dp)) for alt in variant.ALT])
 
     def _calculate_af(self, ac, dp):
         return float(ac) / dp if dp > 0 else 0.0
+
+    def _calculate_power(self, dp, ac):
+        """
+        Return the binomial probability of observing ac supporting reads, given a total coverage dp and a
+        expected VAF tumor purity / 2.
+        """
+        expected_vaf = self.purity / 2
+        pvalue = binom.cdf(k=ac, n=dp, p=expected_vaf)
+        return pvalue
 
     def run(self):
         batch = []
