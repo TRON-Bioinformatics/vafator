@@ -12,3 +12,4 @@ integration_tests:
 	bash tests/integration_test_01.sh
 	bash tests/integration_test_02.sh
 	bash tests/integration_test_03.sh
+	bash tests/integration_test_04.sh

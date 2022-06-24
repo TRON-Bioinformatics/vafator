@@ -31,8 +31,12 @@ def annotator():
                         help="All reads with a mapping quality below this threshold will be filtered out")
     parser.add_argument("--base-call-quality", dest="base_call_quality", action="store", type=int, default=30,
                         help="All bases with a base call quality below this threshold will be filtered out")
-    parser.add_argument("-p", "--purity", required=False, default=1.0, type=float,
-                        help="tumor purity to use for the power calculation")
+    parser.add_argument("--purity", dest="purity", required=False, default=1.0, type=float,
+                        help="tumor purity for the probability of an undetected mutation")
+    parser.add_argument("--tumor-ploidy", dest="tumor_ploidy", required=False, default=2, type=int,
+                        help="tumor ploidy for the probability of an undetected mutation")
+    parser.add_argument("--normal-ploidy", dest="normal_ploidy", required=False, default=2, type=int,
+                        help="normal ploidy for the probability of an undetected mutation")
 
     args = parser.parse_args()
 
@@ -65,7 +69,9 @@ def annotator():
             input_bams=bams,
             mapping_qual_thr=args.mapping_quality,
             base_call_qual_thr=args.base_call_quality,
-            purity=float(args.purity)
+            purity=float(args.purity),
+            tumor_ploidy=int(args.tumor_ploidy),
+            normal_ploidy=int(args.normal_ploidy)
         )
         annotator.run()
     except Exception as e:

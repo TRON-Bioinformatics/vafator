@@ -34,11 +34,15 @@ class Annotator(object):
                  input_bams: dict,
                  mapping_qual_thr=0,
                  base_call_qual_thr=29,
-                 purity=1.0):
+                 purity=1.0,
+                 tumor_ploidy=2,
+                 normal_ploidy=2):
 
         self.mapping_quality_threshold = mapping_qual_thr
         self.base_call_quality_threshold = base_call_qual_thr
         self.purity = purity
+        self.tumor_ploidy = tumor_ploidy
+        self.normal_ploidy = normal_ploidy
 
         self.vcf = VCF(input_vcf)
         # sets a line in the header with the command used to annotate the file
@@ -147,7 +151,10 @@ class Annotator(object):
         Return the binomial probability of observing ac supporting reads, given a total coverage dp and a
         expected VAF tumor purity / 2.
         """
-        expected_vaf = self.purity / 2
+        # NOTE: assumes normal ploidy of 2, this will not hold in sexual chromosomes except PARs or other no diploid
+        # organisms
+        corrected_tumor_ploidy = self.purity*self.tumor_ploidy + ((1 - self.purity)*self.normal_ploidy)
+        expected_vaf = self.purity / corrected_tumor_ploidy
         pvalue = binom.cdf(k=ac, n=dp, p=expected_vaf)
         return pvalue
 
