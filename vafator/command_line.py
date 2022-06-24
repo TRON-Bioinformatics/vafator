@@ -31,6 +31,8 @@ def annotator():
                         help="All reads with a mapping quality below this threshold will be filtered out")
     parser.add_argument("--base-call-quality", dest="base_call_quality", action="store", type=int, default=30,
                         help="All bases with a base call quality below this threshold will be filtered out")
+    parser.add_argument("-p", "--purity", required=False, default=1.0, type=float,
+                        help="tumor purity to use for the power calculation")
 
     args = parser.parse_args()
 
@@ -62,7 +64,8 @@ def annotator():
             output_vcf=args.output_vcf,
             input_bams=bams,
             mapping_qual_thr=args.mapping_quality,
-            base_call_qual_thr=args.base_call_quality
+            base_call_qual_thr=args.base_call_quality,
+            purity=float(args.purity)
         )
         annotator.run()
     except Exception as e:

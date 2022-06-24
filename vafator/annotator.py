@@ -29,10 +29,16 @@ class Annotator(object):
         "timestamp": datetime.datetime.now().timestamp(),
     }
 
-    def __init__(self, input_vcf: str, output_vcf: str, input_bams: dict, mapping_qual_thr=0, base_call_qual_thr=29):
+    def __init__(self, input_vcf: str, output_vcf: str,
+                 input_bams: dict,
+                 mapping_qual_thr=0,
+                 base_call_qual_thr=29,
+                 purity=1.0):
 
         self.mapping_quality_threshold = mapping_qual_thr
         self.base_call_quality_threshold = base_call_qual_thr
+        self.purity = purity
+
         self.vcf = VCF(input_vcf)
         # sets a line in the header with the command used to annotate the file
         self.vafator_header["input_vcf"] = os.path.abspath(input_vcf)
@@ -41,6 +47,7 @@ class Annotator(object):
             ["{}:{}".format(s, ",".join([os.path.abspath(b) for b in bams])) for s, bams in input_bams.items()])
         self.vafator_header["mapping_quality_threshold"] = mapping_qual_thr
         self.vafator_header["base_call_quality_threshold"] = base_call_qual_thr
+        self.vafator_header["purity"] = purity
         self.vcf.add_to_header("##vafator_command_line={}".format(json.dumps(self.vafator_header)))
         # adds to the header all the names of the annotations
         for a in Annotator._get_headers(input_bams):
