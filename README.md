@@ -114,8 +114,8 @@ position immediately before the indel. Only insertions and deletions as recorded
 coordinates and sequence from the VCF file are taken into account. Any read supporting a similar but not identical indel
 is not counted. 
 
-Also, multiallelic mutations are not supported for indels.
-
+**NOTE**: multiallelic mutations are not supported for indels, the indel in the multiallelic position will be 
+annotated with null values.
 
 ## Support for MNVs
 
