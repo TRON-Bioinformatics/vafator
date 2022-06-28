@@ -25,6 +25,4 @@ vafator2decifer --vcf_file $output/vafator.vcf \
 
 test -s $output/decifer.input.tsv || { echo "Missing decifer input output file!"; exit 1; }
 test -s $output/decifer.purity.tsv || { echo "Missing decifer input output file!"; exit 1; }
-#test -s $output/snps.bed || { echo "Missing SNPs bed output file!"; exit 1; }
-test -s $output/my_tumor_cna.bed || { echo "Missing SNPs bed output file!"; exit 1; }
 test -s $output/vafator.vcf || { echo "Missing SNPs bed output file!"; exit 1; }
