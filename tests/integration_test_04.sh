@@ -16,17 +16,15 @@ vafator --input-vcf $input_vcf \
 
 vafator2decifer --vcf_file $output/vafator.vcf \
 --samples my_normal,my_tumor \
---cna_file $test_data/best.bbc.minimal.ucn \
+--cna_file $test_data/best.seg.minimal.ucn \
 --out_dir $output \
 --min_depth 1 \
 --min_alt_depth 1 \
 --min_vaf 0.1
 
 
-test -s $output/vafator.vcf || { echo "Missing VCF output file!"; exit 1; }
-assert_eq `cat $output_vcf | grep -v '#' | grep my_normal_af | wc -l` `cat $input_vcf | grep -v '#' | wc -l` "Wrong number of variants"
-assert_eq `cat $output_vcf | grep -v '#' | grep my_tumor_af | wc -l` `cat $input_vcf | grep -v '#' | wc -l` "Wrong number of variants"
-assert_eq `cat $output_vcf | grep -v '#' | grep my_normal_ac | wc -l` `cat $input_vcf | grep -v '#' | wc -l` "Wrong number of variants"
-assert_eq `cat $output_vcf | grep -v '#' | grep my_tumor_ac | wc -l` `cat $input_vcf | grep -v '#' | wc -l` "Wrong number of variants"
-assert_eq `cat $output_vcf | grep -v '#' | grep my_normal_dp | wc -l` `cat $input_vcf | grep -v '#' | wc -l` "Wrong number of variants"
-assert_eq `cat $output_vcf | grep -v '#' | grep my_tumor_dp | wc -l` `cat $input_vcf | grep -v '#' | wc -l` "Wrong number of variants"
+test -s $output/decifer.input.tsv || { echo "Missing decifer input output file!"; exit 1; }
+test -s $output/decifer.purity.tsv || { echo "Missing decifer input output file!"; exit 1; }
+test -s $output/snps.bed || { echo "Missing SNPs bed output file!"; exit 1; }
+test -s $output/my_tumor_cna.bed || { echo "Missing SNPs bed output file!"; exit 1; }
+test -s $output/vafator.vcf || { echo "Missing SNPs bed output file!"; exit 1; }
