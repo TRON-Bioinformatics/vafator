@@ -32,15 +32,15 @@ class Annotator(object):
 
     def __init__(self, input_vcf: str, output_vcf: str,
                  input_bams: dict,
+                 purities: dict = {},
                  mapping_qual_thr=0,
                  base_call_qual_thr=29,
-                 purity=1.0,
                  tumor_ploidy=2,
                  normal_ploidy=2):
 
         self.mapping_quality_threshold = mapping_qual_thr
         self.base_call_quality_threshold = base_call_qual_thr
-        self.purity = purity
+        self.purities = purities
         self.tumor_ploidy = tumor_ploidy
         self.normal_ploidy = normal_ploidy
 
@@ -52,7 +52,7 @@ class Annotator(object):
             ["{}:{}".format(s, ",".join([os.path.abspath(b) for b in bams])) for s, bams in input_bams.items()])
         self.vafator_header["mapping_quality_threshold"] = mapping_qual_thr
         self.vafator_header["base_call_quality_threshold"] = base_call_qual_thr
-        self.vafator_header["purity"] = purity
+        self.vafator_header["purities"] = ";".join(["{}:{}".format(s, p) for s, p in purities.items()])
         self.vcf.add_to_header("##vafator_command_line={}".format(json.dumps(self.vafator_header)))
         # adds to the header all the names of the annotations
         for a in Annotator._get_headers(input_bams):
@@ -134,27 +134,31 @@ class Annotator(object):
                         variant.INFO["{}_ac_{}".format(sample, i + 1)] = ",".join([str(coverage_metrics.ac[alt]) for alt in variant.ALT])
                         variant.INFO["{}_dp_{}".format(sample, i + 1)] = coverage_metrics.dp
                         variant.INFO["{}_pw_{}".format(sample, i + 1)] = ",".join(
-                            [str(self._calculate_power(ac=coverage_metrics.ac[alt], dp=coverage_metrics.dp)) for alt in variant.ALT])
+                            [str(self._calculate_power(
+                                ac=coverage_metrics.ac[alt],
+                                dp=coverage_metrics.dp,
+                                purity=self.purities.get(sample, 1.0))) for alt in variant.ALT])
                     global_ac.update(coverage_metrics.ac)
                     global_dp += coverage_metrics.dp
 
             variant.INFO["{}_af".format(sample)] = ",".join([str(self._calculate_af(global_ac[alt], global_dp)) for alt in variant.ALT])
             variant.INFO["{}_ac".format(sample)] = ",".join([str(global_ac[alt]) for alt in variant.ALT])
             variant.INFO["{}_dp".format(sample)] = global_dp
-            variant.INFO["{}_pw".format(sample)] = ",".join([str(self._calculate_power(ac=global_ac[alt], dp=global_dp)) for alt in variant.ALT])
+            variant.INFO["{}_pw".format(sample)] = ",".join([str(self._calculate_power(
+                ac=global_ac[alt], dp=global_dp, purity=self.purities.get(sample, 1.0))) for alt in variant.ALT])
 
     def _calculate_af(self, ac, dp):
         return float(ac) / dp if dp > 0 else 0.0
 
-    def _calculate_power(self, dp, ac):
+    def _calculate_power(self, dp, ac, purity):
         """
         Return the binomial probability of observing ac supporting reads, given a total coverage dp and a
         expected VAF tumor purity / 2.
         """
         # NOTE: assumes normal ploidy of 2, this will not hold in sexual chromosomes except PARs or other no diploid
         # organisms
-        corrected_tumor_ploidy = self.purity*self.tumor_ploidy + ((1 - self.purity)*self.normal_ploidy)
-        expected_vaf = self.purity / corrected_tumor_ploidy
+        corrected_tumor_ploidy = purity * self.tumor_ploidy + ((1 - purity)*self.normal_ploidy)
+        expected_vaf = purity / corrected_tumor_ploidy
         pvalue = binom.cdf(k=ac, n=dp, p=expected_vaf)
         return pvalue
 

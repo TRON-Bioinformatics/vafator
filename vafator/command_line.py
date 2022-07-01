@@ -33,6 +33,11 @@ def annotator():
                         help="All bases with a base call quality below this threshold will be filtered out")
     parser.add_argument("--purity", dest="purity", required=False, default=1.0, type=float,
                         help="tumor purity for the probability of an undetected mutation")
+    parser.add_argument('--purity', action='append', nargs=2,
+                        metavar=('sample_name', 'purity'), default=[],
+                        help='A sample name and a tumor purity value. Can be used multiple times to input multiple '
+                             'samples in combination with --bam. If no purity is provided for a given sample the '
+                             'default value is 1.0')
     parser.add_argument("--tumor-ploidy", dest="tumor_ploidy", required=False, default=2, type=int,
                         help="tumor ploidy for the probability of an undetected mutation")
     parser.add_argument("--normal-ploidy", dest="normal_ploidy", required=False, default=2, type=int,
@@ -59,6 +64,14 @@ def annotator():
         else:
             bams["normal"] = [bam]
 
+    purities = {}
+    for sample_name, purity in args.bam:
+        if sample_name in purities:
+            raise ValueError('Multiple purity values provided for sample: {}'.format(sample_name))
+        if sample_name not in bams:
+            raise ValueError('Provided a purity value for a sample for which no BAM is provided: {}'.format(sample_name))
+        purities[sample_name] = float(purity)
+
     if len(bams) == 0:
         raise ValueError("Please, provide at least one bam file through either --bam, --tumor-bams or --normal-bams")
 
@@ -69,7 +82,7 @@ def annotator():
             input_bams=bams,
             mapping_qual_thr=args.mapping_quality,
             base_call_qual_thr=args.base_call_quality,
-            purity=float(args.purity),
+            purities=purities,
             tumor_ploidy=int(args.tumor_ploidy),
             normal_ploidy=int(args.normal_ploidy)
         )
