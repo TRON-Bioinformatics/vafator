@@ -23,10 +23,6 @@ def annotator():
                         help='A sample name and a BAM file. Can be used multiple times to input multiple samples and '
                              'multiple BAM files. The same sample name can be used multiple times with different BAMs, '
                              'this will treated as replicates.')
-    parser.add_argument("--normal-bams", dest="normal_bams", nargs='+', action="store", default=[],
-                        help="Whitespace-separated list of normal BAMs to analyse")
-    parser.add_argument("--tumor-bams", dest="tumor_bams", nargs='+', action="store", default=[],
-                        help="Whitespace-separated list of tumor BAMs to analyse")
     parser.add_argument("--mapping-quality", dest="mapping_quality", action="store", type=int, default=1,
                         help="All reads with a mapping quality below this threshold will be filtered out")
     parser.add_argument("--base-call-quality", dest="base_call_quality", action="store", type=int, default=30,
@@ -51,16 +47,6 @@ def annotator():
             bams[sample_name].append(bam)
         else:
             bams[sample_name] = [bam]
-    for bam in args.tumor_bams:
-        if "tumor" in bams:
-            bams["tumor"].append(bam)
-        else:
-            bams["tumor"] = [bam]
-    for bam in args.normal_bams:
-        if "normal" in bams:
-            bams["normal"].append(bam)
-        else:
-            bams["normal"] = [bam]
 
     purities = {}
     for sample_name, purity in args.bam:
@@ -71,7 +57,7 @@ def annotator():
         purities[sample_name] = float(purity)
 
     if len(bams) == 0:
-        raise ValueError("Please, provide at least one bam file through either --bam, --tumor-bams or --normal-bams")
+        raise ValueError("Please, provide at least one bam file with '--bam sample_name /path/to/file.bam'")
 
     try:
         annotator = Annotator(
