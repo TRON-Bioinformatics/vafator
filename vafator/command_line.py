@@ -118,6 +118,8 @@ def vafator2decifer():
     parser.add_argument("-M", "--min_depth", required=True, type=int, help="minimum depth PER sample")
     parser.add_argument("-A", "--min_alt_depth", required=True, type=int,
                         help="minimum depth of ALT allele in at least one sample")
+    parser.add_argument("-F", "--min_vaf", required=True, type=float,
+                        help="minimum VAF of ALT allele in at least one sample")
     parser.add_argument("-N", "--max_CN", required=False, default=6, type=int,
                         help="maximum total copy number for each observed clone")
     parser.add_argument("-B", "--exclude_list", required=False, default=None, type=str,

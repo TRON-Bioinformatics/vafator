@@ -10,3 +10,5 @@ work/
 output/
 .nextflow/
 .tox/
+out
+vafator/tests/resources/results
