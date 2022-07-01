@@ -197,6 +197,8 @@ class TestAnnotator(TestCase):
         self.assertTrue("normal_dp" in info_annotations)
         self.assertTrue("tumor_pw" in info_annotations)
         self.assertTrue("normal_pw" in info_annotations)
+        self.assertTrue("normal_eaf" in info_annotations)
+        self.assertTrue("tumor_eaf" in info_annotations)
 
         annotator = Annotator(
             input_vcf=input_file, output_vcf=output_vcf, input_bams={"normal": [bam1], "tumor": [bam2]},

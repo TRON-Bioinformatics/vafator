@@ -90,6 +90,12 @@ class Annotator(object):
                 'Type': 'Float',
                 'Number': 'A'
             })
+            headers.append({
+                'ID': "{}_eaf".format(s),
+                'Description': "Expected VAF considering the purity and ploidy/copy number",
+                'Type': 'Float',
+                'Number': '1'
+            })
 
             if len(bams) > 1:
                 for i, bam in enumerate(bams, start=1):
@@ -144,8 +150,10 @@ class Annotator(object):
             variant.INFO["{}_af".format(sample)] = ",".join([str(self._calculate_af(global_ac[alt], global_dp)) for alt in variant.ALT])
             variant.INFO["{}_ac".format(sample)] = ",".join([str(global_ac[alt]) for alt in variant.ALT])
             variant.INFO["{}_dp".format(sample)] = global_dp
-            variant.INFO["{}_pw".format(sample)] = ",".join([str(self._calculate_power(
-                ac=global_ac[alt], dp=global_dp, purity=self.purities.get(sample, 1.0))) for alt in variant.ALT])
+            variant.INFO["{}_eaf".format(sample)] = str(self._calculate_expected_vaf(purity=self.purities.get(sample, 1.0)))
+            variant.INFO["{}_pw".format(sample)] = ",".join(
+                [str(self._calculate_power(ac=global_ac[alt], dp=global_dp, purity=self.purities.get(sample, 1.0)))
+                 for alt in variant.ALT])
 
     def _calculate_af(self, ac, dp):
         return float(ac) / dp if dp > 0 else 0.0
@@ -157,10 +165,14 @@ class Annotator(object):
         """
         # NOTE: assumes normal ploidy of 2, this will not hold in sexual chromosomes except PARs or other no diploid
         # organisms
-        corrected_tumor_ploidy = purity * self.tumor_ploidy + ((1 - purity)*self.normal_ploidy)
-        expected_vaf = purity / corrected_tumor_ploidy
+        expected_vaf = self._calculate_expected_vaf(purity)
         pvalue = binom.cdf(k=ac, n=dp, p=expected_vaf)
         return pvalue
+
+    def _calculate_expected_vaf(self, purity):
+        corrected_tumor_ploidy = purity * self.tumor_ploidy + ((1 - purity) * self.normal_ploidy)
+        expected_vaf = purity / corrected_tumor_ploidy
+        return expected_vaf
 
     def run(self):
         batch = []
