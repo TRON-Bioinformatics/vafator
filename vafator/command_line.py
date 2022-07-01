@@ -31,8 +31,6 @@ def annotator():
                         help="All reads with a mapping quality below this threshold will be filtered out")
     parser.add_argument("--base-call-quality", dest="base_call_quality", action="store", type=int, default=30,
                         help="All bases with a base call quality below this threshold will be filtered out")
-    parser.add_argument("--purity", dest="purity", required=False, default=1.0, type=float,
-                        help="tumor purity for the probability of an undetected mutation")
     parser.add_argument('--purity', action='append', nargs=2,
                         metavar=('sample_name', 'purity'), default=[],
                         help='A sample name and a tumor purity value. Can be used multiple times to input multiple '
