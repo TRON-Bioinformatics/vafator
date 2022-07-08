@@ -17,7 +17,10 @@ Annotations:
 * **Allele frequency (AF)**: ratio of reads supporting the alternate allele.
 * **Allele count (AC)**: count of reads supporting the alternate allele. 
 * **Depth of coverage (DP)**: number of reads covering the position of the variant
+* **Power**: power to call a somatic mutation
 
+VAFator uses cyvcf2 (Pederson, 2017) to read/write VCF files and pysam (https://github.com/pysam-developers/pysam) to read BAM files.
+Both libraries are cython wrappers around HTSlib (Bonfield, 2021).
 
 ## How to install
 
@@ -28,6 +31,7 @@ When installaing from PyPI there are some system dependencies that will need to 
 * libz
 * liblzma
 * htslib=1.14
+* 
 
 ## How to run
 
@@ -55,20 +59,14 @@ vafator --input-vcf /path/yo/your.vcf \
 --bam primary /path/to/your_primary_tumor_2.bam
 ```
 
-Alternatively, you can use `--normal-bams` and/or `--tumor-bams` and the sample names will be predefined to `normal` 
-and `tumor`respectively.
-
-```
-vafator --input-vcf /path/yo/your.vcf \
---output-vcf /path/yo/your_vafator.vcf \ 
---normal-bams /path/to/your_normal.bam \
---tumor-bams /path/to/your_tumor_1.bam,/path/to/your_tumor_2.bam
-```
+### Read filtering
 
 Use the parameters `--mapping-quality` and `--base-call-quality` to define the minimum quality values for each read.
-All reads with quality values velow these thresholds will be filtered out.
+All reads with quality values below these thresholds will be filtered out.
 
 Overlapping reads from read pairs are not double counted. The read with the highest base call quality is chosen.
+
+Reads flagged as duplicates are not counted.
 
 ## Understanding the output
 
@@ -121,4 +119,12 @@ annotated with null values.
 
 ## Support for MNVs
 
-Not supported
+Not supported at the moment when not decomposed.
+
+If running the nextflow pipeline indicated above, MNVs and complex variants are by default decomposed and hence
+correctly annotated by VAFator.
+
+## Bibliography
+
+- Pedersen, B. S., & Quinlan, A. R. (2017). cyvcf2: fast, flexible variant analysis with Python. Bioinformatics, 33(12), 1867–1869. https://doi.org/10.1093/BIOINFORMATICS/BTX057
+- Bonfield, J. K., Marshall, J., Danecek, P., Li, H., Ohan, V., Whitwham, A., Keane, T., & Davies, R. M. (2021). HTSlib: C library for reading/writing high-throughput sequencing data. GigaScience, 10(2). https://doi.org/10.1093/GIGASCIENCE/GIAB007
