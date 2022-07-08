@@ -3,20 +3,14 @@ from collections import Counter
 import pysam
 from cyvcf2 import VCF, Writer, Variant
 import os
-
-from pybedtools import Interval, BedTool
-
 import vafator
 import datetime
 import json
 import asyncio
 import time
-from scipy.stats import binom
+from power import PowerCalculator
 from vafator.pileups import get_variant_pileup, get_metrics
-from vafator.ploidies import default_ploidy_manager
 
-
-DEFAULT_PURITY = 1.0
 
 BATCH_SIZE = 10000
 
@@ -50,6 +44,7 @@ class Annotator(object):
         self.purities = purities
         self.tumor_ploidies = tumor_ploidies
         self.normal_ploidy = normal_ploidy
+        self.power = PowerCalculator(normal_ploidy=normal_ploidy, tumor_ploidies=tumor_ploidies, purities=purities)
 
         self.vcf = VCF(input_vcf)
         # sets a line in the header with the command used to annotate the file
@@ -132,9 +127,6 @@ class Annotator(object):
         for v in batch:
             self.vcf_writer.write_record(v)
 
-    def _get_ploidy(self, sample, variant):
-        return self.tumor_ploidies.get(sample, default_ploidy_manager).get_ploidy(variant=variant)
-
     def _add_stats(self, variant: Variant):
         for sample, bams in self.bam_readers.items():
             global_dp = 0
@@ -152,11 +144,8 @@ class Annotator(object):
                         variant.INFO["{}_ac_{}".format(sample, i + 1)] = ",".join([str(coverage_metrics.ac[alt]) for alt in variant.ALT])
                         variant.INFO["{}_dp_{}".format(sample, i + 1)] = coverage_metrics.dp
                         variant.INFO["{}_pw_{}".format(sample, i + 1)] = ",".join(
-                            [str(self._calculate_power(
-                                ac=coverage_metrics.ac[alt],
-                                dp=coverage_metrics.dp,
-                                purity=self.purities.get(sample, DEFAULT_PURITY),
-                                tumor_ploidy=self._get_ploidy(sample=sample, variant=variant)
+                            [str(self.power.calculate_power(
+                                ac=coverage_metrics.ac[alt], dp=coverage_metrics.dp, sample=sample, variant=variant
                             )) for alt in variant.ALT])
                     global_ac.update(coverage_metrics.ac)
                     global_dp += coverage_metrics.dp
@@ -164,35 +153,14 @@ class Annotator(object):
             variant.INFO["{}_af".format(sample)] = ",".join([str(self._calculate_af(global_ac[alt], global_dp)) for alt in variant.ALT])
             variant.INFO["{}_ac".format(sample)] = ",".join([str(global_ac[alt]) for alt in variant.ALT])
             variant.INFO["{}_dp".format(sample)] = global_dp
-            variant.INFO["{}_eaf".format(sample)] = str(self._calculate_expected_vaf(
-                purity=self.purities.get(sample, DEFAULT_PURITY),
-                tumor_ploidy=self._get_ploidy(sample=sample, variant=variant)
-            ))
+            variant.INFO["{}_eaf".format(sample)] = str(self.power.calculate_expected_vaf(
+                sample=pysam, variant=variant))
             variant.INFO["{}_pw".format(sample)] = ",".join(
-                [str(self._calculate_power(
-                    ac=global_ac[alt], dp=global_dp,
-                    purity=self.purities.get(sample, DEFAULT_PURITY),
-                    tumor_ploidy=self._get_ploidy(sample=sample, variant=variant)))
+                [str(self.power.calculate_power(ac=global_ac[alt], dp=global_dp, sample=sample, variant=variant))
                  for alt in variant.ALT])
 
     def _calculate_af(self, ac, dp):
         return float(ac) / dp if dp > 0 else 0.0
-
-    def _calculate_power(self, dp, ac, purity, tumor_ploidy):
-        """
-        Return the binomial probability of observing ac supporting reads, given a total coverage dp and a
-        expected VAF tumor purity / 2.
-        """
-        # NOTE: assumes normal ploidy of 2, this will not hold in sexual chromosomes except PARs or other no diploid
-        # organisms
-        expected_vaf = self._calculate_expected_vaf(purity, tumor_ploidy)
-        pvalue = binom.cdf(k=ac, n=dp, p=expected_vaf)
-        return pvalue
-
-    def _calculate_expected_vaf(self, purity, tumor_ploidy):
-        corrected_tumor_ploidy = purity * tumor_ploidy + ((1 - purity) * self.normal_ploidy)
-        expected_vaf = purity / corrected_tumor_ploidy
-        return expected_vaf
 
     def run(self):
         batch = []
