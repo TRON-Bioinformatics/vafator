@@ -6,6 +6,8 @@
 [![Run unit tests](https://github.com/TRON-Bioinformatics/vafator/actions/workflows/unit_tests.yml/badge.svg?branch=master)](https://github.com/TRON-Bioinformatics/vafator/actions/workflows/unit_tests.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
 
+<img src="images/VAFator-logos.jpeg" width="200">
+
 VAFator annotates the variants in a VCF file with technical annotations from multiple BAM files. 
 Supports annotating somatic variant calls with the annotations from the normal and the tumor samples; although
 it can also be used for germline variant calls.
