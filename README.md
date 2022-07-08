@@ -17,7 +17,7 @@ Annotations:
 * **Allele frequency (AF)**: ratio of reads supporting the alternate allele.
 * **Allele count (AC)**: count of reads supporting the alternate allele. 
 * **Depth of coverage (DP)**: number of reads covering the position of the variant
-* **Power**: power to call a somatic mutation
+* **Power**: probability that a given somatic mutation is undetected given the total coverage, supporting reads and expected allele frequency.
 
 VAFator uses cyvcf2 (Pederson, 2017) to read/write VCF files and pysam (https://github.com/pysam-developers/pysam) to read BAM files.
 Both libraries are cython wrappers around HTSlib (Bonfield, 2021).
@@ -45,8 +45,9 @@ vafator --input-vcf /path/yo/your.vcf \
 ```
 
 This will add annotations for each of the three samples `normal`, `primary` and `metastasis`: `normal_ac`, 
-`normal_dp`, `normal_af`, `primary_ac`, `primary_dp`, `primary_af`, 
-`metastasis_ac`, `metastasis_dp` and `metastasis_af`. 
+`normal_dp`, `normal_af`, `normal_pw`, `primary_ac`, `primary_dp`, etc. 
+
+## Support for technical replicates
 
 If more than one BAM  for the same sample is provided then the annotations are calculated across all BAMs 
 and for also each of them separately (eg: `primary_af` provides the allele frequency across all primary tumor BAMs, 
@@ -62,11 +63,58 @@ vafator --input-vcf /path/yo/your.vcf \
 ### Read filtering
 
 Use the parameters `--mapping-quality` and `--base-call-quality` to define the minimum quality values for each read.
-All reads with quality values below these thresholds will be filtered out.
+All reads with quality values below these thresholds will be filtered out. 
+The default values are MQ >= 1 and BQ >= 30.
 
 Overlapping reads from read pairs are not double counted. The read with the highest base call quality is chosen.
 
 Reads flagged as duplicates are not counted.
+
+
+### Power (or probability of an undetected somatic mutation)
+
+We estimate the probability that there is an undetected somatic mutation at a specific genomic location, given the
+- n: observed number of reads at the position (coverage)
+- k: observed number of reads supporting the mutation (variant reads)
+- f: expected variant allele frequency (VAF)
+
+We model this with a binomial distribution `binom(n, f, k)`.
+
+The expected VAF is by default 0.5, making several assumptions: 
+1) no normal contamination in tumor sample (default purity: 1.0)
+2) ploidy in normal of 2
+3) ploidy in tumor of 2
+4) the mutation is clonal and the mutation multiplicity is one irrespective of the copy number
+
+Expected VAF (f) is calculated as follows:
+
+![Expected VAF](images/expected_vaf_formula.png)
+
+The purity in a given tumor sample can be specified with the parameter `--purity primary 0.5`.
+
+The ploidy in the normal sample can be specified as `--normal_ploidy 3`. 
+Only one normal sample may be specified.
+Also, in the normal only genome-wide ploidy may be specified.
+
+The ploidy in a given tumor sample can be specified either as a genome-wide value `--tumor-ploidy metastasis 4`
+or local copy numbers in a BED file as follows `--tumor-ploidy metastasis /path/to/copy_numbers.bed`.
+
+The expected format of the BED file ([specification](https://samtools.github.io/hts-specs/BEDv1.pdf)) makes use of 
+the name and score optional columns to represent the local copy numbers as indicated below:
+```
+chr1    10000   20000   CN  3.2
+chr1    20000   30000   CN  2.6
+...
+```
+
+**NOTE**: beware that unlike VCF files where genomic positions are 1-based, BED positions are 0-based. The intervals
+in a BED file are half-closed.
+
+**NOTE 2**: local copy numbers may be float numbers
+
+**NOTE 3**: beware that no multiple test correction is applied to the power
+
+
 
 ## Understanding the output
 
