@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+import os
 import sys
 import logging
 import vafator
@@ -32,10 +33,15 @@ def annotator():
                         help='A sample name and a tumor purity value. Can be used multiple times to input multiple '
                              'samples in combination with --bam. If no purity is provided for a given sample the '
                              'default value is 1.0')
-    parser.add_argument("--tumor-ploidy", dest="tumor_ploidy", required=False, default=2, type=int,
-                        help="tumor ploidy for the probability of an undetected mutation")
+    parser.add_argument("--tumor-ploidy", action='append', nargs=2,
+                        metavar=('sample_name', 'tumor_ploidy'), default=[],
+                        help='A sample name and a tumor ploidy. Can be used multiple times to input multiple '
+                             'samples in combination with --bam. The tumor ploidy can be provided as a genome-wide '
+                             'value (eg: --tumor-ploidy primary 2) or as local copy numbers in a BED file '
+                             '(eg: --tumor-ploidy primary /path/to/copy_numbers.bed), see the documentation for '
+                             'expected BED format (default: 2)')
     parser.add_argument("--normal-ploidy", dest="normal_ploidy", required=False, default=2, type=int,
-                        help="normal ploidy for the probability of an undetected mutation")
+                        help="Normal ploidy for the power calculation (default: 2)")
 
     args = parser.parse_args()
 
@@ -56,6 +62,24 @@ def annotator():
             raise ValueError('Provided a purity value for a sample for which no BAM is provided: {}'.format(sample_name))
         purities[sample_name] = float(purity)
 
+    tumor_ploidies = {}
+    for sample_name, purity in args.bam:
+        if sample_name in tumor_ploidies:
+            raise ValueError('Multiple tumor ploidy values provided for sample: {}'.format(sample_name))
+        if sample_name not in bams:
+            raise ValueError(
+                'Provided a tumor ploidy value for a sample for which no BAM is provided: {}'.format(sample_name))
+        try:
+            # checks if a genome-wide purity value was passed
+            tumor_ploidies[sample_name] = float(purity)
+        except ValueError:
+            # checks if the non float-like value is a path to an existing file
+            if os.path.exists(purity):
+                tumor_ploidies[sample_name] = purity
+            else:
+                raise ValueError('The provided tumor ploidy is neither a copy number value or a BED file with copy '
+                                 'numbers')
+
     if len(bams) == 0:
         raise ValueError("Please, provide at least one bam file with '--bam sample_name /path/to/file.bam'")
 
@@ -67,7 +91,7 @@ def annotator():
             mapping_qual_thr=args.mapping_quality,
             base_call_qual_thr=args.base_call_quality,
             purities=purities,
-            tumor_ploidy=int(args.tumor_ploidy),
+            tumor_ploidy=tumor_ploidies,
             normal_ploidy=int(args.normal_ploidy)
         )
         annotator.run()

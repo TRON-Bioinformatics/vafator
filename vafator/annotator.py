@@ -11,6 +11,10 @@ import time
 from scipy.stats import binom
 from vafator.pileups import get_variant_pileup, get_metrics
 
+DEFAULT_TUMOR_PLOIDY = 2
+
+DEFAULT_PURITY = 1.0
+
 BATCH_SIZE = 10000
 
 
@@ -35,7 +39,7 @@ class Annotator(object):
                  purities: dict = {},
                  mapping_qual_thr=0,
                  base_call_qual_thr=29,
-                 tumor_ploidy=2,
+                 tumor_ploidy: dict = {},
                  normal_ploidy=2):
 
         self.mapping_quality_threshold = mapping_qual_thr
@@ -143,34 +147,42 @@ class Annotator(object):
                             [str(self._calculate_power(
                                 ac=coverage_metrics.ac[alt],
                                 dp=coverage_metrics.dp,
-                                purity=self.purities.get(sample, 1.0))) for alt in variant.ALT])
+                                purity=self.purities.get(sample, DEFAULT_PURITY),
+                                tumor_ploidy=self.tumor_ploidy.get(sample, DEFAULT_TUMOR_PLOIDY)
+                            )) for alt in variant.ALT])
                     global_ac.update(coverage_metrics.ac)
                     global_dp += coverage_metrics.dp
 
             variant.INFO["{}_af".format(sample)] = ",".join([str(self._calculate_af(global_ac[alt], global_dp)) for alt in variant.ALT])
             variant.INFO["{}_ac".format(sample)] = ",".join([str(global_ac[alt]) for alt in variant.ALT])
             variant.INFO["{}_dp".format(sample)] = global_dp
-            variant.INFO["{}_eaf".format(sample)] = str(self._calculate_expected_vaf(purity=self.purities.get(sample, 1.0)))
+            variant.INFO["{}_eaf".format(sample)] = str(self._calculate_expected_vaf(
+                purity=self.purities.get(sample, DEFAULT_PURITY),
+                tumor_ploidy=self.tumor_ploidy.get(sample, DEFAULT_TUMOR_PLOIDY)
+            ))
             variant.INFO["{}_pw".format(sample)] = ",".join(
-                [str(self._calculate_power(ac=global_ac[alt], dp=global_dp, purity=self.purities.get(sample, 1.0)))
+                [str(self._calculate_power(
+                    ac=global_ac[alt], dp=global_dp,
+                    purity=self.purities.get(sample, DEFAULT_PURITY),
+                    tumor_ploidy=self.tumor_ploidy.get(sample, DEFAULT_TUMOR_PLOIDY)))
                  for alt in variant.ALT])
 
     def _calculate_af(self, ac, dp):
         return float(ac) / dp if dp > 0 else 0.0
 
-    def _calculate_power(self, dp, ac, purity):
+    def _calculate_power(self, dp, ac, purity, tumor_ploidy):
         """
         Return the binomial probability of observing ac supporting reads, given a total coverage dp and a
         expected VAF tumor purity / 2.
         """
         # NOTE: assumes normal ploidy of 2, this will not hold in sexual chromosomes except PARs or other no diploid
         # organisms
-        expected_vaf = self._calculate_expected_vaf(purity)
+        expected_vaf = self._calculate_expected_vaf(purity, tumor_ploidy)
         pvalue = binom.cdf(k=ac, n=dp, p=expected_vaf)
         return pvalue
 
-    def _calculate_expected_vaf(self, purity):
-        corrected_tumor_ploidy = purity * self.tumor_ploidy + ((1 - purity) * self.normal_ploidy)
+    def _calculate_expected_vaf(self, purity, tumor_ploidy):
+        corrected_tumor_ploidy = purity * tumor_ploidy + ((1 - purity) * self.normal_ploidy)
         expected_vaf = purity / corrected_tumor_ploidy
         return expected_vaf
 
