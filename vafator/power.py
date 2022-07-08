@@ -1,5 +1,5 @@
 from scipy.stats import binom
-from ploidies import default_ploidy_manager
+from vafator.ploidies import default_ploidy_manager
 
 
 DEFAULT_PURITY = 1.0

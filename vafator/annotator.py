@@ -8,7 +8,7 @@ import datetime
 import json
 import asyncio
 import time
-from power import PowerCalculator
+from vafator.power import PowerCalculator
 from vafator.pileups import get_variant_pileup, get_metrics
 
 

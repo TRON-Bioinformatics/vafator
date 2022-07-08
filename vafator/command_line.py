@@ -1,13 +1,9 @@
 #!/usr/bin/env python
 import argparse
-import os
 import sys
 import logging
-
-from pybedtools import BedTool
-
 import vafator
-from ploidies import PloidyManager
+from vafator.ploidies import PloidyManager
 from vafator.annotator import Annotator
 from vafator.multiallelic_filter import MultiallelicFilter
 from vafator.vafator2decifer import run_vafator2decifer

@@ -4,7 +4,7 @@ from typing import Union
 from cyvcf2 import Variant
 from pybedtools import BedTool, Interval
 
-from tests.utils import VafatorVariant
+from vafator.tests.utils import VafatorVariant
 
 DEFAULT_PLOIDY = 2.0
 

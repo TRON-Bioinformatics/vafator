@@ -11,7 +11,7 @@ vafator --input-vcf $input_vcf \
 --output-vcf $output_vcf \
 --bam my_normal $test_data/project.NIST_NIST7035_H7AP8ADXX_TAAGGCGA_1_NA12878.bwa.markDuplicates.chr1_1000000_2000000.bam \
 --bam my_tumor $test_data/project.NIST_NIST7035_H7AP8ADXX_TAAGGCGA_1_NA12878.bwa.markDuplicates.chr1_1000000_2000000.bam \
---purity 0.5 --tumor-ploidy 4 --normal-ploidy 2
+--purity my_tumor 0.5 --tumor-ploidy my_tumor 4 --normal-ploidy 2
 
 test -s $output/vafator.vcf || { echo "Missing VCF output file!"; exit 1; }
 assert_eq `cat $output_vcf | grep -v '#' | grep my_normal_af | wc -l` `cat $input_vcf | grep -v '#' | wc -l` "Wrong number of variants"
