@@ -179,7 +179,7 @@ class TestAnnotator(TestCase):
         bam2 = pkg_resources.resource_filename(__name__, "resources/COLO_829_t1.bam")
         annotator = Annotator(
             input_vcf=input_file, output_vcf=output_vcf, input_bams={"normal": [bam1], "tumor": [bam2]},
-            purities={"tumor": 0.8}, tumor_ploidy={"tumor": 2.8}
+            purities={"tumor": 0.8}, tumor_ploidies={"tumor": 2.8}
         )
         annotator.run()
 
@@ -202,6 +202,6 @@ class TestAnnotator(TestCase):
 
         annotator = Annotator(
             input_vcf=input_file, output_vcf=output_vcf, input_bams={"normal": [bam1], "tumor": [bam2]},
-            purities={"tumor": 0.2}, tumor_ploidy={"tumor": 1.5}
+            purities={"tumor": 0.2}, tumor_ploidies={"tumor": 1.5}
         )
         annotator.run()

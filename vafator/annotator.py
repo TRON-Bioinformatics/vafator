@@ -3,6 +3,9 @@ from collections import Counter
 import pysam
 from cyvcf2 import VCF, Writer, Variant
 import os
+
+from pybedtools import Interval, BedTool
+
 import vafator
 import datetime
 import json
@@ -39,13 +42,13 @@ class Annotator(object):
                  purities: dict = {},
                  mapping_qual_thr=0,
                  base_call_qual_thr=29,
-                 tumor_ploidy: dict = {},
+                 tumor_ploidies: dict = {},
                  normal_ploidy=2):
 
         self.mapping_quality_threshold = mapping_qual_thr
         self.base_call_quality_threshold = base_call_qual_thr
         self.purities = purities
-        self.tumor_ploidy = tumor_ploidy
+        self.tumor_ploidies = tumor_ploidies
         self.normal_ploidy = normal_ploidy
 
         self.vcf = VCF(input_vcf)
@@ -57,6 +60,8 @@ class Annotator(object):
         self.vafator_header["mapping_quality_threshold"] = mapping_qual_thr
         self.vafator_header["base_call_quality_threshold"] = base_call_qual_thr
         self.vafator_header["purities"] = ";".join(["{}:{}".format(s, p) for s, p in purities.items()])
+        self.vafator_header["normal_ploidy"] = normal_ploidy
+        self.vafator_header["tumor_ploidy"] = ";".join(["{}:{}".format(s, p) for s, p in tumor_ploidies.items()])
         self.vcf.add_to_header("##vafator_command_line={}".format(json.dumps(self.vafator_header)))
         # adds to the header all the names of the annotations
         for a in Annotator._get_headers(input_bams):
@@ -127,6 +132,22 @@ class Annotator(object):
         for v in batch:
             self.vcf_writer.write_record(v)
 
+    def _get_tumor_ploidy(self, sample, variant: Variant):
+
+        result = DEFAULT_TUMOR_PLOIDY
+        tumor_ploidy = self.tumor_ploidies.get(sample, DEFAULT_TUMOR_PLOIDY)
+        if isinstance(tumor_ploidy, float):
+            result = tumor_ploidy
+        else:
+            # read from the BED file
+            # NOTE: converts from 1-based into 0-based
+            tumor_ploidy: BedTool
+            hits = tumor_ploidy.all_hits(Interval(chrom=variant.CHROM, start=variant.start - 1, end=variant.start))
+            if len(hits) > 0:
+                result = hits[0].score
+
+        return result
+
     def _add_stats(self, variant: Variant):
         for sample, bams in self.bam_readers.items():
             global_dp = 0
@@ -148,7 +169,7 @@ class Annotator(object):
                                 ac=coverage_metrics.ac[alt],
                                 dp=coverage_metrics.dp,
                                 purity=self.purities.get(sample, DEFAULT_PURITY),
-                                tumor_ploidy=self.tumor_ploidy.get(sample, DEFAULT_TUMOR_PLOIDY)
+                                tumor_ploidy=self.tumor_ploidies.get(sample, DEFAULT_TUMOR_PLOIDY)
                             )) for alt in variant.ALT])
                     global_ac.update(coverage_metrics.ac)
                     global_dp += coverage_metrics.dp
@@ -158,13 +179,13 @@ class Annotator(object):
             variant.INFO["{}_dp".format(sample)] = global_dp
             variant.INFO["{}_eaf".format(sample)] = str(self._calculate_expected_vaf(
                 purity=self.purities.get(sample, DEFAULT_PURITY),
-                tumor_ploidy=self.tumor_ploidy.get(sample, DEFAULT_TUMOR_PLOIDY)
+                tumor_ploidy=self.tumor_ploidies.get(sample, DEFAULT_TUMOR_PLOIDY)
             ))
             variant.INFO["{}_pw".format(sample)] = ",".join(
                 [str(self._calculate_power(
                     ac=global_ac[alt], dp=global_dp,
                     purity=self.purities.get(sample, DEFAULT_PURITY),
-                    tumor_ploidy=self.tumor_ploidy.get(sample, DEFAULT_TUMOR_PLOIDY)))
+                    tumor_ploidy=self.tumor_ploidies.get(sample, DEFAULT_TUMOR_PLOIDY)))
                  for alt in variant.ALT])
 
     def _calculate_af(self, ac, dp):

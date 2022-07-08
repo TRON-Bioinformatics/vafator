@@ -3,6 +3,9 @@ import argparse
 import os
 import sys
 import logging
+
+from pybedtools import BedTool
+
 import vafator
 from vafator.annotator import Annotator
 from vafator.multiallelic_filter import MultiallelicFilter
@@ -55,7 +58,7 @@ def annotator():
             bams[sample_name] = [bam]
 
     purities = {}
-    for sample_name, purity in args.bam:
+    for sample_name, purity in args.purity:
         if sample_name in purities:
             raise ValueError('Multiple purity values provided for sample: {}'.format(sample_name))
         if sample_name not in bams:
@@ -63,7 +66,7 @@ def annotator():
         purities[sample_name] = float(purity)
 
     tumor_ploidies = {}
-    for sample_name, purity in args.bam:
+    for sample_name, tumor_ploidy in args.tumor_ploidy:
         if sample_name in tumor_ploidies:
             raise ValueError('Multiple tumor ploidy values provided for sample: {}'.format(sample_name))
         if sample_name not in bams:
@@ -71,11 +74,11 @@ def annotator():
                 'Provided a tumor ploidy value for a sample for which no BAM is provided: {}'.format(sample_name))
         try:
             # checks if a genome-wide purity value was passed
-            tumor_ploidies[sample_name] = float(purity)
+            tumor_ploidies[sample_name] = float(tumor_ploidy)
         except ValueError:
             # checks if the non float-like value is a path to an existing file
-            if os.path.exists(purity):
-                tumor_ploidies[sample_name] = purity
+            if os.path.exists(tumor_ploidy):
+                tumor_ploidies[sample_name] = BedTool(tumor_ploidy)
             else:
                 raise ValueError('The provided tumor ploidy is neither a copy number value or a BED file with copy '
                                  'numbers')
@@ -91,7 +94,7 @@ def annotator():
             mapping_qual_thr=args.mapping_quality,
             base_call_qual_thr=args.base_call_quality,
             purities=purities,
-            tumor_ploidy=tumor_ploidies,
+            tumor_ploidies=tumor_ploidies,
             normal_ploidy=int(args.normal_ploidy)
         )
         annotator.run()
