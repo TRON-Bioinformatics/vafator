@@ -7,6 +7,7 @@ import logging
 from pybedtools import BedTool
 
 import vafator
+from ploidies import PloidyManager
 from vafator.annotator import Annotator
 from vafator.multiallelic_filter import MultiallelicFilter
 from vafator.vafator2decifer import run_vafator2decifer
@@ -74,14 +75,10 @@ def annotator():
                 'Provided a tumor ploidy value for a sample for which no BAM is provided: {}'.format(sample_name))
         try:
             # checks if a genome-wide purity value was passed
-            tumor_ploidies[sample_name] = float(tumor_ploidy)
+            tumor_ploidies[sample_name] = PloidyManager(genome_wide_ploidy=float(tumor_ploidy))
         except ValueError:
             # checks if the non float-like value is a path to an existing file
-            if os.path.exists(tumor_ploidy):
-                tumor_ploidies[sample_name] = BedTool(tumor_ploidy)
-            else:
-                raise ValueError('The provided tumor ploidy is neither a copy number value or a BED file with copy '
-                                 'numbers')
+            tumor_ploidies[sample_name] = PloidyManager(local_copy_numbers=tumor_ploidy)
 
     if len(bams) == 0:
         raise ValueError("Please, provide at least one bam file with '--bam sample_name /path/to/file.bam'")

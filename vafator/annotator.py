@@ -13,8 +13,8 @@ import asyncio
 import time
 from scipy.stats import binom
 from vafator.pileups import get_variant_pileup, get_metrics
+from vafator.ploidies import default_ploidy_manager
 
-DEFAULT_TUMOR_PLOIDY = 2
 
 DEFAULT_PURITY = 1.0
 
@@ -132,21 +132,8 @@ class Annotator(object):
         for v in batch:
             self.vcf_writer.write_record(v)
 
-    def _get_tumor_ploidy(self, sample, variant: Variant):
-
-        result = DEFAULT_TUMOR_PLOIDY
-        tumor_ploidy = self.tumor_ploidies.get(sample, DEFAULT_TUMOR_PLOIDY)
-        if isinstance(tumor_ploidy, float):
-            result = tumor_ploidy
-        else:
-            # read from the BED file
-            # NOTE: converts from 1-based into 0-based
-            tumor_ploidy: BedTool
-            hits = tumor_ploidy.all_hits(Interval(chrom=variant.CHROM, start=variant.start - 1, end=variant.start))
-            if len(hits) > 0:
-                result = hits[0].score
-
-        return result
+    def _get_ploidy(self, sample, variant):
+        return self.tumor_ploidies.get(sample, default_ploidy_manager).get_ploidy(variant=variant)
 
     def _add_stats(self, variant: Variant):
         for sample, bams in self.bam_readers.items():
@@ -169,7 +156,7 @@ class Annotator(object):
                                 ac=coverage_metrics.ac[alt],
                                 dp=coverage_metrics.dp,
                                 purity=self.purities.get(sample, DEFAULT_PURITY),
-                                tumor_ploidy=self.tumor_ploidies.get(sample, DEFAULT_TUMOR_PLOIDY)
+                                tumor_ploidy=self._get_ploidy(sample=sample, variant=variant)
                             )) for alt in variant.ALT])
                     global_ac.update(coverage_metrics.ac)
                     global_dp += coverage_metrics.dp
@@ -179,13 +166,13 @@ class Annotator(object):
             variant.INFO["{}_dp".format(sample)] = global_dp
             variant.INFO["{}_eaf".format(sample)] = str(self._calculate_expected_vaf(
                 purity=self.purities.get(sample, DEFAULT_PURITY),
-                tumor_ploidy=self.tumor_ploidies.get(sample, DEFAULT_TUMOR_PLOIDY)
+                tumor_ploidy=self._get_ploidy(sample=sample, variant=variant)
             ))
             variant.INFO["{}_pw".format(sample)] = ",".join(
                 [str(self._calculate_power(
                     ac=global_ac[alt], dp=global_dp,
                     purity=self.purities.get(sample, DEFAULT_PURITY),
-                    tumor_ploidy=self.tumor_ploidies.get(sample, DEFAULT_TUMOR_PLOIDY)))
+                    tumor_ploidy=self._get_ploidy(sample=sample, variant=variant)))
                  for alt in variant.ALT])
 
     def _calculate_af(self, ac, dp):

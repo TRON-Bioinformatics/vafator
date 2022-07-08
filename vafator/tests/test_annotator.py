@@ -2,6 +2,8 @@ import os
 import pkg_resources
 from unittest import TestCase
 from cyvcf2 import VCF
+
+from ploidies import PloidyManager
 from vafator.annotator import Annotator
 import vafator.tests.utils as test_utils
 import time
@@ -179,7 +181,7 @@ class TestAnnotator(TestCase):
         bam2 = pkg_resources.resource_filename(__name__, "resources/COLO_829_t1.bam")
         annotator = Annotator(
             input_vcf=input_file, output_vcf=output_vcf, input_bams={"normal": [bam1], "tumor": [bam2]},
-            purities={"tumor": 0.8}, tumor_ploidies={"tumor": 2.8}
+            purities={"tumor": 0.8}, tumor_ploidies={"tumor": PloidyManager(genome_wide_ploidy=2.8)}
         )
         annotator.run()
 
@@ -202,6 +204,6 @@ class TestAnnotator(TestCase):
 
         annotator = Annotator(
             input_vcf=input_file, output_vcf=output_vcf, input_bams={"normal": [bam1], "tumor": [bam2]},
-            purities={"tumor": 0.2}, tumor_ploidies={"tumor": 1.5}
+            purities={"tumor": 0.2}, tumor_ploidies={"tumor": PloidyManager(genome_wide_ploidy=1.5)}
         )
         annotator.run()
