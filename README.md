@@ -89,6 +89,8 @@ Expected VAF (f) is calculated as follows:
 
 ![Expected VAF](images/expected_vaf_formula.png)
 
+This is a simplification of the power calculation in Carter, 2012.
+
 The purity in a given tumor sample can be specified with the parameter `--purity primary 0.5`.
 
 The ploidy in the normal sample can be specified as `--normal_ploidy 3`. 
@@ -185,3 +187,4 @@ correctly annotated by VAFator.
 
 - Pedersen, B. S., & Quinlan, A. R. (2017). cyvcf2: fast, flexible variant analysis with Python. Bioinformatics, 33(12), 1867–1869. https://doi.org/10.1093/BIOINFORMATICS/BTX057
 - Bonfield, J. K., Marshall, J., Danecek, P., Li, H., Ohan, V., Whitwham, A., Keane, T., & Davies, R. M. (2021). HTSlib: C library for reading/writing high-throughput sequencing data. GigaScience, 10(2). https://doi.org/10.1093/GIGASCIENCE/GIAB007
+- Carter, S. L., Cibulskis, K., Helman, E., McKenna, A., Shen, H., Zack, T., Laird, P. W., Onofrio, R. C., Winckler, W., Weir, B. A., Beroukhim, R., Pellman, D., Levine, D. A., Lander, E. S., Meyerson, M., & Getz, G. (2012). Absolute quantification of somatic DNA alterations in human cancer. Nature Biotechnology 2012 30:5, 30(5), 413–421. https://doi.org/10.1038/nbt.2203
