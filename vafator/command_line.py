@@ -2,8 +2,6 @@
 import argparse
 import sys
 import logging
-from pyBedGraph import BedGraph
-from pyBigWig import pyBigWig
 import vafator
 from vafator.hatchet2bed import run_hatchet2bed
 from vafator.ploidies import PloidyManager
