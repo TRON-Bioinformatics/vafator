@@ -99,22 +99,32 @@ Also, in the normal only genome-wide ploidy may be specified.
 The ploidy in a given tumor sample can be specified either as a genome-wide value `--tumor-ploidy metastasis 4`
 or local copy numbers in a BED file as follows `--tumor-ploidy metastasis /path/to/copy_numbers.bed`.
 
-The expected format of the BED file ([specification](https://samtools.github.io/hts-specs/BEDv1.pdf)) makes use of 
-the name and score optional columns to represent the local copy numbers as indicated below:
+The expected format of the BedGraph file ([specification](https://genome.ucsc.edu/goldenpath/help/bedgraph.html)) 
+without any track information as indicated below:
 ```
-chr1    10000   20000   CN  3.2
-chr1    20000   30000   CN  2.6
-...
+chr1    10000   20000   3.2
+chr1    20000   30000   2.6
+[...]
 ```
 
-**NOTE**: beware that unlike VCF files where genomic positions are 1-based, BED positions are 0-based. The intervals
+**NOTE**: beware that unlike VCF files where genomic positions are 1-based, BedGraph positions are 0-based. The intervals
 in a BED file are half-closed.
-
 **NOTE 2**: local copy numbers may be float numbers
-
 **NOTE 3**: beware that no multiple test correction is applied to the power
 
+In order to integrate Hatchet copy numbers were multiple clones are considered, there is a specific 
+command `hatchet2bed` that transforms a Hatchet .ucn output file into one BedGraph file as described above per sample.
+The Hatchet reported clone copy numbers are averaged by the relative abundance of each clone. 
 
+Run this as follows:
+```
+hatchet2bed --input-file your.hatchet.ucn --output-prefix your_beds_prefix
+```
+
+The Hatchet file expects the following columns, where any number of clones is supported:
+```
+#CHR	START	END	SAMPLE	cn_normal	u_normal	cn_clone1	u_clone1	cn_clone2	u_clone2	cn_clone3	u_clone3	cn_clone4	u_clone4
+```
 
 ## Understanding the output
 
