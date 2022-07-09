@@ -21,7 +21,8 @@ setup(
         'console_scripts': [
             'vafator=vafator.command_line:annotator',
             'multiallelics-filter=vafator.command_line:multiallelics_filter',
-            'vafator2decifer=vafator.command_line:vafator2decifer'
+            'vafator2decifer=vafator.command_line:vafator2decifer',
+            'hatchet2bed=vafator.command_line:hatchet2bed'
         ],
     },
     author="TRON - Translational Oncology at the University Medical Center of the Johannes Gutenberg University Mainz"

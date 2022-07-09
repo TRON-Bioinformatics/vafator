@@ -8,7 +8,9 @@ import datetime
 import json
 import asyncio
 import time
+from vafator.power import PowerCalculator
 from vafator.pileups import get_variant_pileup, get_metrics
+
 
 BATCH_SIZE = 10000
 
@@ -29,10 +31,21 @@ class Annotator(object):
         "timestamp": datetime.datetime.now().timestamp(),
     }
 
-    def __init__(self, input_vcf: str, output_vcf: str, input_bams: dict, mapping_qual_thr=0, base_call_qual_thr=29):
+    def __init__(self, input_vcf: str, output_vcf: str,
+                 input_bams: dict,
+                 purities: dict = {},
+                 mapping_qual_thr=0,
+                 base_call_qual_thr=29,
+                 tumor_ploidies: dict = {},
+                 normal_ploidy=2):
 
         self.mapping_quality_threshold = mapping_qual_thr
         self.base_call_quality_threshold = base_call_qual_thr
+        self.purities = purities
+        self.tumor_ploidies = tumor_ploidies
+        self.normal_ploidy = normal_ploidy
+        self.power = PowerCalculator(normal_ploidy=normal_ploidy, tumor_ploidies=tumor_ploidies, purities=purities)
+
         self.vcf = VCF(input_vcf)
         # sets a line in the header with the command used to annotate the file
         self.vafator_header["input_vcf"] = os.path.abspath(input_vcf)
@@ -41,6 +54,9 @@ class Annotator(object):
             ["{}:{}".format(s, ",".join([os.path.abspath(b) for b in bams])) for s, bams in input_bams.items()])
         self.vafator_header["mapping_quality_threshold"] = mapping_qual_thr
         self.vafator_header["base_call_quality_threshold"] = base_call_qual_thr
+        self.vafator_header["purities"] = ";".join(["{}:{}".format(s, p) for s, p in purities.items()])
+        self.vafator_header["normal_ploidy"] = normal_ploidy
+        self.vafator_header["tumor_ploidy"] = ";".join(["{}:{}".format(s, p) for s, p in tumor_ploidies.items()])
         self.vcf.add_to_header("##vafator_command_line={}".format(json.dumps(self.vafator_header)))
         # adds to the header all the names of the annotations
         for a in Annotator._get_headers(input_bams):
@@ -71,6 +87,19 @@ class Annotator(object):
                 'Type': 'Integer',
                 'Number': 'A'
             })
+            headers.append({
+                'ID': "{}_pw".format(s),
+                'Description': "Probability of an undetected mutation given the observed supporting reads (AC), "
+                               "the observed total coverage (DP) and the provided tumor purity",
+                'Type': 'Float',
+                'Number': 'A'
+            })
+            headers.append({
+                'ID': "{}_eaf".format(s),
+                'Description': "Expected VAF considering the purity and ploidy/copy number",
+                'Type': 'Float',
+                'Number': '1'
+            })
 
             if len(bams) > 1:
                 for i, bam in enumerate(bams, start=1):
@@ -84,7 +113,12 @@ class Annotator(object):
                          'Type': 'Float', 'Number': '1'},
                         {'ID': "{}_ac_{}".format(s, i),
                          'Description': "Allele count for the alternate alleles in the {} sample {}".format(s, n),
-                         'Type': 'Integer', 'Number': 'A'}
+                         'Type': 'Integer', 'Number': 'A'},
+                        {'ID': "{}_pw_{}".format(s, i),
+                         'Description': "Probability of an undetected mutation given the observed supporting "
+                                        "reads (AC), the observed total coverage (DP) and the provided tumor "
+                                        "purity in the {} sample {}".format(s, n),
+                         'Type': 'Float', 'Number': 'A'}
                     ]
         return headers
 
@@ -109,12 +143,21 @@ class Annotator(object):
                             [str(self._calculate_af(coverage_metrics.ac[alt], coverage_metrics.dp)) for alt in variant.ALT])
                         variant.INFO["{}_ac_{}".format(sample, i + 1)] = ",".join([str(coverage_metrics.ac[alt]) for alt in variant.ALT])
                         variant.INFO["{}_dp_{}".format(sample, i + 1)] = coverage_metrics.dp
+                        variant.INFO["{}_pw_{}".format(sample, i + 1)] = ",".join(
+                            [str(self.power.calculate_power(
+                                ac=coverage_metrics.ac[alt], dp=coverage_metrics.dp, sample=sample, variant=variant
+                            )) for alt in variant.ALT])
                     global_ac.update(coverage_metrics.ac)
                     global_dp += coverage_metrics.dp
 
             variant.INFO["{}_af".format(sample)] = ",".join([str(self._calculate_af(global_ac[alt], global_dp)) for alt in variant.ALT])
             variant.INFO["{}_ac".format(sample)] = ",".join([str(global_ac[alt]) for alt in variant.ALT])
             variant.INFO["{}_dp".format(sample)] = global_dp
+            variant.INFO["{}_eaf".format(sample)] = str(self.power.calculate_expected_vaf(
+                sample=pysam, variant=variant))
+            variant.INFO["{}_pw".format(sample)] = ",".join(
+                [str(self.power.calculate_power(ac=global_ac[alt], dp=global_dp, sample=sample, variant=variant))
+                 for alt in variant.ALT])
 
     def _calculate_af(self, ac, dp):
         return float(ac) / dp if dp > 0 else 0.0

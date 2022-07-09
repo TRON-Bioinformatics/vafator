@@ -6,6 +6,8 @@
 [![Run unit tests](https://github.com/TRON-Bioinformatics/vafator/actions/workflows/unit_tests.yml/badge.svg?branch=master)](https://github.com/TRON-Bioinformatics/vafator/actions/workflows/unit_tests.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
 
+<img src="images/VAFator-logos.jpeg" width="200">
+
 VAFator annotates the variants in a VCF file with technical annotations from multiple BAM files. 
 Supports annotating somatic variant calls with the annotations from the normal and the tumor samples; although
 it can also be used for germline variant calls.
@@ -15,7 +17,10 @@ Annotations:
 * **Allele frequency (AF)**: ratio of reads supporting the alternate allele.
 * **Allele count (AC)**: count of reads supporting the alternate allele. 
 * **Depth of coverage (DP)**: number of reads covering the position of the variant
+* **Power**: probability that a given somatic mutation is undetected given the total coverage, supporting reads and expected allele frequency.
 
+VAFator uses cyvcf2 (Pederson, 2017) to read/write VCF files and pysam (https://github.com/pysam-developers/pysam) to read BAM files.
+Both libraries are cython wrappers around HTSlib (Bonfield, 2021).
 
 ## How to install
 
@@ -26,6 +31,7 @@ When installaing from PyPI there are some system dependencies that will need to 
 * libz
 * liblzma
 * htslib=1.14
+* 
 
 ## How to run
 
@@ -39,8 +45,9 @@ vafator --input-vcf /path/yo/your.vcf \
 ```
 
 This will add annotations for each of the three samples `normal`, `primary` and `metastasis`: `normal_ac`, 
-`normal_dp`, `normal_af`, `primary_ac`, `primary_dp`, `primary_af`, 
-`metastasis_ac`, `metastasis_dp` and `metastasis_af`. 
+`normal_dp`, `normal_af`, `normal_pw`, `primary_ac`, `primary_dp`, etc. 
+
+## Support for technical replicates
 
 If more than one BAM  for the same sample is provided then the annotations are calculated across all BAMs 
 and for also each of them separately (eg: `primary_af` provides the allele frequency across all primary tumor BAMs, 
@@ -53,20 +60,71 @@ vafator --input-vcf /path/yo/your.vcf \
 --bam primary /path/to/your_primary_tumor_2.bam
 ```
 
-Alternatively, you can use `--normal-bams` and/or `--tumor-bams` and the sample names will be predefined to `normal` 
-and `tumor`respectively.
-
-```
-vafator --input-vcf /path/yo/your.vcf \
---output-vcf /path/yo/your_vafator.vcf \ 
---normal-bams /path/to/your_normal.bam \
---tumor-bams /path/to/your_tumor_1.bam,/path/to/your_tumor_2.bam
-```
+### Read filtering
 
 Use the parameters `--mapping-quality` and `--base-call-quality` to define the minimum quality values for each read.
-All reads with quality values velow these thresholds will be filtered out.
+All reads with quality values below these thresholds will be filtered out. 
+The default values are MQ >= 1 and BQ >= 30.
 
 Overlapping reads from read pairs are not double counted. The read with the highest base call quality is chosen.
+
+Reads flagged as duplicates are not counted.
+
+
+### Power (or probability of an undetected somatic mutation)
+
+We estimate the probability that there is an undetected somatic mutation at a specific genomic location, given the
+- n: observed number of reads at the position (coverage)
+- k: observed number of reads supporting the mutation (variant reads)
+- f: expected variant allele frequency (VAF)
+
+We model this with a binomial distribution `binom(n, f, k)`.
+
+The expected VAF is by default 0.5, making several assumptions: 
+1) no normal contamination in tumor sample (default purity: 1.0)
+2) ploidy in normal of 2
+3) ploidy in tumor of 2
+4) the mutation is clonal and the mutation multiplicity is one irrespective of the copy number
+
+Expected VAF (f) is calculated as follows:
+
+![Expected VAF](images/expected_vaf_formula.png)
+
+The purity in a given tumor sample can be specified with the parameter `--purity primary 0.5`.
+
+The ploidy in the normal sample can be specified as `--normal_ploidy 3`. 
+Only one normal sample may be specified.
+Also, in the normal only genome-wide ploidy may be specified.
+
+The ploidy in a given tumor sample can be specified either as a genome-wide value `--tumor-ploidy metastasis 4`
+or local copy numbers in a BED file as follows `--tumor-ploidy metastasis /path/to/copy_numbers.bed`.
+
+The expected format of the BedGraph file ([specification](https://genome.ucsc.edu/goldenpath/help/bedgraph.html)) 
+without any track information as indicated below:
+```
+chr1    10000   20000   3.2
+chr1    20000   30000   2.6
+[...]
+```
+
+**NOTE**: beware that unlike VCF files where genomic positions are 1-based, BedGraph positions are 0-based. The intervals
+in a BED file are half-closed.
+**NOTE 2**: local copy numbers may be float numbers
+**NOTE 3**: beware that no multiple test correction is applied to the power
+
+In order to integrate Hatchet copy numbers were multiple clones are considered, there is a specific 
+command `hatchet2bed` that transforms a Hatchet .ucn output file into one BedGraph file as described above per sample.
+The Hatchet reported clone copy numbers are averaged by the relative abundance of each clone. 
+
+Run this as follows:
+```
+hatchet2bed --input-file your.hatchet.ucn --output-prefix your_beds_prefix
+```
+
+The Hatchet file expects the following columns, where any number of clones is supported:
+```
+#CHR	START	END	SAMPLE	cn_normal	u_normal	cn_clone1	u_clone1	cn_clone2	u_clone2	cn_clone3	u_clone3	cn_clone4	u_clone4
+```
 
 ## Understanding the output
 
@@ -114,9 +172,17 @@ position immediately before the indel. Only insertions and deletions as recorded
 coordinates and sequence from the VCF file are taken into account. Any read supporting a similar but not identical indel
 is not counted. 
 
-Also, multiallelic mutations are not supported for indels.
-
+**NOTE**: multiallelic mutations are not supported for indels, the indel in the multiallelic position will be 
+annotated with null values.
 
 ## Support for MNVs
 
-Not supported
+Not supported at the moment when not decomposed.
+
+If running the nextflow pipeline indicated above, MNVs and complex variants are by default decomposed and hence
+correctly annotated by VAFator.
+
+## Bibliography
+
+- Pedersen, B. S., & Quinlan, A. R. (2017). cyvcf2: fast, flexible variant analysis with Python. Bioinformatics, 33(12), 1867–1869. https://doi.org/10.1093/BIOINFORMATICS/BTX057
+- Bonfield, J. K., Marshall, J., Danecek, P., Li, H., Ohan, V., Whitwham, A., Keane, T., & Davies, R. M. (2021). HTSlib: C library for reading/writing high-throughput sequencing data. GigaScience, 10(2). https://doi.org/10.1093/GIGASCIENCE/GIAB007

@@ -3,6 +3,8 @@ import argparse
 import sys
 import logging
 import vafator
+from vafator.hatchet2bed import run_hatchet2bed
+from vafator.ploidies import PloidyManager
 from vafator.annotator import Annotator
 from vafator.multiallelic_filter import MultiallelicFilter
 from vafator.vafator2decifer import run_vafator2decifer
@@ -23,14 +25,24 @@ def annotator():
                         help='A sample name and a BAM file. Can be used multiple times to input multiple samples and '
                              'multiple BAM files. The same sample name can be used multiple times with different BAMs, '
                              'this will treated as replicates.')
-    parser.add_argument("--normal-bams", dest="normal_bams", nargs='+', action="store", default=[],
-                        help="Whitespace-separated list of normal BAMs to analyse")
-    parser.add_argument("--tumor-bams", dest="tumor_bams", nargs='+', action="store", default=[],
-                        help="Whitespace-separated list of tumor BAMs to analyse")
     parser.add_argument("--mapping-quality", dest="mapping_quality", action="store", type=int, default=1,
                         help="All reads with a mapping quality below this threshold will be filtered out")
     parser.add_argument("--base-call-quality", dest="base_call_quality", action="store", type=int, default=30,
                         help="All bases with a base call quality below this threshold will be filtered out")
+    parser.add_argument('--purity', action='append', nargs=2,
+                        metavar=('sample_name', 'purity'), default=[],
+                        help='A sample name and a tumor purity value. Can be used multiple times to input multiple '
+                             'samples in combination with --bam. If no purity is provided for a given sample the '
+                             'default value is 1.0')
+    parser.add_argument("--tumor-ploidy", action='append', nargs=2,
+                        metavar=('sample_name', 'tumor_ploidy'), default=[],
+                        help='A sample name and a tumor ploidy. Can be used multiple times to input multiple '
+                             'samples in combination with --bam. The tumor ploidy can be provided as a genome-wide '
+                             'value (eg: --tumor-ploidy primary 2) or as local copy numbers in a BED file '
+                             '(eg: --tumor-ploidy primary /path/to/copy_numbers.bed), see the documentation for '
+                             'expected BED format (default: 2)')
+    parser.add_argument("--normal-ploidy", dest="normal_ploidy", required=False, default=2, type=int,
+                        help="Normal ploidy for the power calculation (default: 2)")
 
     args = parser.parse_args()
 
@@ -42,19 +54,31 @@ def annotator():
             bams[sample_name].append(bam)
         else:
             bams[sample_name] = [bam]
-    for bam in args.tumor_bams:
-        if "tumor" in bams:
-            bams["tumor"].append(bam)
-        else:
-            bams["tumor"] = [bam]
-    for bam in args.normal_bams:
-        if "normal" in bams:
-            bams["normal"].append(bam)
-        else:
-            bams["normal"] = [bam]
+
+    purities = {}
+    for sample_name, purity in args.purity:
+        if sample_name in purities:
+            raise ValueError('Multiple purity values provided for sample: {}'.format(sample_name))
+        if sample_name not in bams:
+            raise ValueError('Provided a purity value for a sample for which no BAM is provided: {}'.format(sample_name))
+        purities[sample_name] = float(purity)
+
+    tumor_ploidies = {}
+    for sample_name, tumor_ploidy in args.tumor_ploidy:
+        if sample_name in tumor_ploidies:
+            raise ValueError('Multiple tumor ploidy values provided for sample: {}'.format(sample_name))
+        if sample_name not in bams:
+            raise ValueError(
+                'Provided a tumor ploidy value for a sample for which no BAM is provided: {}'.format(sample_name))
+        try:
+            # checks if a genome-wide purity value was passed
+            tumor_ploidies[sample_name] = PloidyManager(genome_wide_ploidy=float(tumor_ploidy))
+        except ValueError:
+            # checks if the non float-like value is a path to an existing file
+            tumor_ploidies[sample_name] = PloidyManager(local_copy_numbers=tumor_ploidy)
 
     if len(bams) == 0:
-        raise ValueError("Please, provide at least one bam file through either --bam, --tumor-bams or --normal-bams")
+        raise ValueError("Please, provide at least one bam file with '--bam sample_name /path/to/file.bam'")
 
     try:
         annotator = Annotator(
@@ -62,7 +86,10 @@ def annotator():
             output_vcf=args.output_vcf,
             input_bams=bams,
             mapping_qual_thr=args.mapping_quality,
-            base_call_qual_thr=args.base_call_quality
+            base_call_qual_thr=args.base_call_quality,
+            purities=purities,
+            tumor_ploidies=tumor_ploidies,
+            normal_ploidy=int(args.normal_ploidy)
         )
         annotator.run()
     except Exception as e:
@@ -121,3 +148,13 @@ def vafator2decifer():
                         help="HATCHet file containing germline SNP counts in tumor samples, baf/tumor.1bed")
     args = parser.parse_args()
     run_vafator2decifer(args)
+
+
+def hatchet2bed():
+    parser = argparse.ArgumentParser(description='Generate input for Decifer using VCF file and HATCHet CNA file')
+    parser.add_argument("-i", "--input-file", required=True, type=str, help="input *.ucn hatchet file")
+    parser.add_argument("-o", "--output-prefix", required=True, type=str,
+                        help="output BED file prefix, one file will be created per sample in the input with the "
+                             "average tumor copy number in each segment")
+    args = parser.parse_args()
+    run_hatchet2bed(input_file=args.input_file, output_prefix=args.output_prefix)
