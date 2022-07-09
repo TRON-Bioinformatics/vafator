@@ -13,3 +13,4 @@ integration_tests:
 	bash tests/integration_test_03.sh
 	bash tests/integration_test_04.sh
 	bash tests/integration_test_05.sh
+	bash tests/integration_test_06.sh
