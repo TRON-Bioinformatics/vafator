@@ -1,4 +1,4 @@
-# VAFator
+<img src="images/VAFator-logos.jpeg" width="200">
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5565743.svg)](https://doi.org/10.5281/zenodo.5565743)
 [![PyPI version](https://badge.fury.io/py/vafator.svg)](https://badge.fury.io/py/vafator)
@@ -6,7 +6,6 @@
 [![Run unit tests](https://github.com/TRON-Bioinformatics/vafator/actions/workflows/unit_tests.yml/badge.svg?branch=master)](https://github.com/TRON-Bioinformatics/vafator/actions/workflows/unit_tests.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
 
-<img src="images/VAFator-logos.jpeg" width="200">
 
 VAFator annotates the variants in a VCF file with technical annotations from multiple BAM files. 
 Supports annotating somatic variant calls with the annotations from the normal and the tumor samples; although
