@@ -2,7 +2,10 @@
 import argparse
 import sys
 import logging
+from pyBedGraph import BedGraph
+from pyBigWig import pyBigWig
 import vafator
+from vafator.hatchet2bed import run_hatchet2bed
 from vafator.ploidies import PloidyManager
 from vafator.annotator import Annotator
 from vafator.multiallelic_filter import MultiallelicFilter
@@ -147,3 +150,12 @@ def vafator2decifer():
                         help="HATCHet file containing germline SNP counts in tumor samples, baf/tumor.1bed")
     args = parser.parse_args()
     run_vafator2decifer(args)
+
+
+def hatchet2bed():
+    parser = argparse.ArgumentParser(description='Generate input for Decifer using VCF file and HATCHet CNA file')
+    parser.add_argument("-i", "--input-file", required=True, type=str, help="input *.ucn hatchet file")
+    parser.add_argument("-o", "--output-file", required=True, type=str,
+                        help="output BED file with the average tumor copy number in each segment")
+    args = parser.parse_args()
+    run_hatchet2bed(input_file=args.input_file, output_file=args.output_file)
