@@ -1,19 +1,14 @@
 import pandas as pd
-import pyBigWig
 
 
-def run_hatchet2bed(input_file, output_file):
-    df = pd.read_csv(input_file, sep='\t')
-    cn_columns = sorted(list(filter(lambda c: c.startswith('cn_clone'), df.columns)))
-    u_columns = sorted(list(filter(lambda c: c.startswith('u_clone'), df.columns)))
+def run_hatchet2bed(input_file, output_prefix):
+    input_df = pd.read_csv(input_file, sep='\t')
+    cn_columns = sorted(list(filter(lambda c: c.startswith('cn_clone'), input_df.columns)))
+    u_columns = sorted(list(filter(lambda c: c.startswith('u_clone'), input_df.columns)))
 
-    with pyBigWig.open(output_file, "w") as bw:
-
-        chromosomes = []
-        starts = []
-        ends = []
-        values = []
-        for i, row in df.iterrows():
+    for sample in input_df.SAMPLE.unique():
+        data = []
+        for i, row in input_df[input_df.SAMPLE == sample].iterrows():
             numerator = []
             total_u = 0
             for cn_column, u_column in zip(cn_columns, u_columns):
@@ -21,18 +16,7 @@ def run_hatchet2bed(input_file, output_file):
                 total_u += u
                 cn = sum(map(lambda c: float(c), row[cn_column].split('|')))
                 numerator.append(u * cn)
-            chromosomes.append(row['#CHR'])
-            starts.append(int(row['START']))
-            ends.append(int(row['END']))
-            values.append(sum(numerator)/total_u)
+            data.append([row['#CHR'], row['START'], row['END'], sum(numerator)/total_u])
 
-            if len(chromosomes) >= 100:
-                bw.addEntries(chromosomes, starts, ends=ends, values=values)
-                chromosomes = []
-                starts = []
-                ends = []
-                values = []
-                break
-
-        if len(chromosomes) > 0:
-            bw.addEntries(chromosomes, starts, ends=ends, values=values)
+        output_df = pd.DataFrame(data=data, columns=['chromosome', 'start', 'end', 'value'])
+        output_df.to_csv('{}.{}.bed'.format(output_prefix, sample), sep='\t', header=False, index=False)

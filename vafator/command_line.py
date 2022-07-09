@@ -155,7 +155,8 @@ def vafator2decifer():
 def hatchet2bed():
     parser = argparse.ArgumentParser(description='Generate input for Decifer using VCF file and HATCHet CNA file')
     parser.add_argument("-i", "--input-file", required=True, type=str, help="input *.ucn hatchet file")
-    parser.add_argument("-o", "--output-file", required=True, type=str,
-                        help="output BED file with the average tumor copy number in each segment")
+    parser.add_argument("-o", "--output-prefix", required=True, type=str,
+                        help="output BED file prefix, one file will be created per sample in the input with the "
+                             "average tumor copy number in each segment")
     args = parser.parse_args()
-    run_hatchet2bed(input_file=args.input_file, output_file=args.output_file)
+    run_hatchet2bed(input_file=args.input_file, output_prefix=args.output_prefix)
