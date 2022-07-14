@@ -2,7 +2,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Union
 from cyvcf2 import Variant
-from pysam.libcalignmentfile import IteratorColumnRegion, AlignmentFile, IteratorColumn, IteratorRow
+from pysam.libcalignmentfile import IteratorColumnRegion, AlignmentFile
 from vafator.tests.utils import VafatorVariant
 import numpy as np
 
@@ -57,41 +57,44 @@ def get_insertion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> Co
     pos = {alt.upper(): [] for alt in variant.ALT}
     pos[variant.REF] = []
     dp = 0
-    position = variant.POS
+    variant_position = variant.POS
     insertion_length = len(variant.ALT[0]) - len(variant.REF)
     insertion = variant.ALT[0][1:]
     alt_upper = variant.ALT[0].upper()
     try:
         pileups = next(pileups).pileups
         dp += len(pileups)
-        for p in pileups:
-            if p.indel > 0:
+        for pileup_read in pileups:
+            if pileup_read.indel > 0:
                 # read with an insertion
-                start = p.alignment.reference_start
+                index = pileup_read.alignment.reference_start
                 relative_position = 0
-                for cigar_type, cigar_length in p.alignment.cigartuples:
+                for cigar_type, cigar_length in pileup_read.alignment.cigartuples:
                     if cigar_type in [0, 2, 3, 7, 8]:  # consumes reference M, D, N, =, X
-                        start += cigar_length
-                        if start > position:
+                        index += cigar_length
+                        if index > variant_position:
                             break
                     if cigar_type in [0, 1, 4, 7, 8]:  # consumes query M, I, S, =, X
                         relative_position += cigar_length
                     if cigar_type == 1:  # does not count I
-                        insertion_in_query = p.alignment.query[relative_position:relative_position + insertion_length]
-                        if start == position and cigar_length == insertion_length and insertion == insertion_in_query:
+                        insertion_in_query = pileup_read.alignment.query[relative_position : relative_position + insertion_length]
+                        if index == variant_position and cigar_length == insertion_length and insertion == insertion_in_query:
                             # the read contains the insertion
                             ac[alt_upper] = ac[alt_upper] + 1
-                            mq[alt_upper].append(p.alignment.mapping_quality)
-                            pos[alt_upper].append(p.query_position)
-            elif p.indel == 0:
+                            mq[alt_upper].append(pileup_read.alignment.mapping_quality)
+                            pos[alt_upper].append(pileup_read.query_position)
+            elif pileup_read.indel == 0:
                 # NOTE: considers all reads without indels to be the reference!
-                mq[variant.REF].append(p.alignment.mapping_quality)
-                pos[variant.REF].append(p.query_position)
+                mq[variant.REF].append(pileup_read.alignment.mapping_quality)
+                pos[variant.REF].append(pileup_read.query_position)
 
     except StopIteration:
         # no reads
         pass
-    return CoverageMetrics(ac=Counter(ac), dp=dp, mqs=Counter(mq), positions=Counter(pos), bqs=Counter())
+    return CoverageMetrics(ac=Counter(ac), dp=dp,
+                           mqs=Counter({k: np.median(l) for k, l in mq.items()}),
+                           positions=Counter({k: np.median(l) for k, l in pos.items()}),
+                           bqs=Counter())
 
 
 def get_deletion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> CoverageMetrics:
@@ -101,36 +104,39 @@ def get_deletion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> Cov
     pos = {alt.upper(): [] for alt in variant.ALT}
     pos[variant.REF] = []
     dp = 0
-    position = variant.POS
+    variant_position = variant.POS
     deletion_length = len(variant.REF) - len(variant.ALT[0])
     alt_upper = variant.ALT[0].upper()
     try:
         pileups = next(pileups).pileups
         dp += len(pileups)
-        for p in pileups:
-            if p.indel < 0:
+        for pileup_read in pileups:
+            if pileup_read.indel < 0:
                 # read with a deletion
-                start = p.alignment.reference_start
-                for cigar_type, cigar_length in p.alignment.cigartuples:
+                start = pileup_read.alignment.reference_start
+                for cigar_type, cigar_length in pileup_read.alignment.cigartuples:
                     if cigar_type in [0, 3, 7, 8]:  # consumes reference M, N, =, X
                         start += cigar_length
                     elif cigar_type == 2:  # D
-                        if start == position and cigar_length == deletion_length:
+                        if start == variant_position and cigar_length == deletion_length:
                             ac[alt_upper] = ac[alt_upper] + 1
-                            mq[alt_upper].append(p.alignment.mapping_quality)
-                            pos[alt_upper].append(p.query_position)
+                            mq[alt_upper].append(pileup_read.alignment.mapping_quality)
+                            pos[alt_upper].append(pileup_read.query_position)
                         else:
                             start += cigar_length
-                    if start > position:
+                    if start > variant_position:
                         break
-            elif p.indel == 0:
+            elif pileup_read.indel == 0:
                 # NOTE: considers all reads without indels to be the reference!
-                mq[variant.REF].append(p.alignment.mapping_quality)
-                pos[variant.REF].append(p.query_position)
+                mq[variant.REF].append(pileup_read.alignment.mapping_quality)
+                pos[variant.REF].append(pileup_read.query_position)
     except StopIteration:
         # no reads
         pass
-    return CoverageMetrics(ac=Counter(ac), dp=dp, mqs=Counter(mq), positions=Counter(pos), bqs=Counter())
+    return CoverageMetrics(ac=Counter(ac), dp=dp,
+                           mqs=Counter({k: np.median(l) for k, l in mq.items()}),
+                           positions=Counter({k: np.median(l) for k, l in pos.items()}),
+                           bqs=Counter())
 
 
 def get_snv_metrics(pileups: IteratorColumnRegion) -> CoverageMetrics:
