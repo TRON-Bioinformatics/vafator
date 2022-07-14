@@ -154,6 +154,71 @@ class TestAnnotator(TestCase):
         self.assertTrue("normal_ac" in info_annotations)
         self.assertTrue("normal_dp" in info_annotations)
 
+        variant = test_utils._get_mutation_at_position(output_vcf, 'chr1', 1506035)
+        self.assertIsNotNone(variant)
+        self.assertEqual(variant.INFO['normal_ac'], 3)
+        self.assertEqual(variant.INFO['normal_dp'], 3)
+        self.assertEqual(variant.INFO['normal_af'], 1.0)
+        self.assertEqual(variant.INFO['normal_pw'], 1.0)
+        self.assertEqual(variant.INFO['normal_eaf'], 0.5)
+        self.assertEqual(variant.INFO['normal_mq'][0], 0)
+        self.assertEqual(variant.INFO['normal_mq'][1], 60.0)
+        self.assertEqual(variant.INFO['normal_bq'][0], 0)
+        self.assertEqual(variant.INFO['normal_bq'][1], 37.0)
+        self.assertEqual(variant.INFO['normal_pos'][0], 0)
+        self.assertEqual(variant.INFO['normal_pos'][1], 56.0)
+
+        variant = test_utils._get_mutation_at_position(output_vcf, 'chr1', 1509825)
+        self.assertIsNotNone(variant)
+        self.assertEqual(variant.INFO['normal_ac'], 13)
+        self.assertEqual(variant.INFO['normal_dp'], 20)
+        # these values are rounded to six digits inside the VCF, not sure why when read the representation is
+        # different...
+        self.assertEqual(round(variant.INFO['normal_af'], 5), 0.65)
+        self.assertEqual(round(variant.INFO['normal_pw'], 5), 0.94234)
+        self.assertEqual(variant.INFO['normal_eaf'], 0.5)
+        self.assertEqual(variant.INFO['normal_mq'][0], 60.0)
+        self.assertEqual(variant.INFO['normal_mq'][1], 60.0)
+        self.assertEqual(variant.INFO['normal_bq'][0], 37.0)
+        self.assertEqual(variant.INFO['normal_bq'][1], 35.0)
+        self.assertEqual(variant.INFO['normal_pos'][0], 31.0)
+        self.assertEqual(variant.INFO['normal_pos'][1], 41.0)
+
+        # this is a deletion
+        variant = test_utils._get_mutation_at_position(output_vcf, 'chr1', 1323143)
+        self.assertIsNotNone(variant)
+        self.assertEqual(variant.INFO['normal_ac'], 20)
+        self.assertEqual(variant.INFO['normal_dp'], 21)
+        # these values are rounded to six digits inside the VCF, not sure why when read the representation is
+        # different...
+        self.assertEqual(round(variant.INFO['normal_af'], 5), 0.95238)
+        self.assertEqual(round(variant.INFO['normal_pw'], 5), 1.0)
+        self.assertEqual(variant.INFO['normal_eaf'], 0.5)
+        self.assertEqual(variant.INFO['normal_mq'][0], 60.0)
+        self.assertEqual(variant.INFO['normal_mq'][1], 60.0)
+        self.assertEqual(variant.INFO['normal_bq'][0], 0.0)
+        self.assertEqual(variant.INFO['normal_bq'][1], 0.0)
+        self.assertEqual(variant.INFO['normal_pos'][0], 50.0)
+        self.assertEqual(variant.INFO['normal_pos'][1], 21.0)
+
+        # this is an insertion
+        variant = test_utils._get_mutation_at_position(output_vcf, 'chr1', 1935367)
+        self.assertIsNotNone(variant)
+        self.assertEqual(variant.INFO['normal_ac'], 1)
+        self.assertEqual(variant.INFO['normal_dp'], 2)
+        # these values are rounded to six digits inside the VCF, not sure why when read the representation is
+        # different...
+        self.assertEqual(round(variant.INFO['normal_af'], 5), 0.5)
+        self.assertEqual(round(variant.INFO['normal_pw'], 5), 0.75)
+        self.assertEqual(variant.INFO['normal_eaf'], 0.5)
+        self.assertEqual(variant.INFO['normal_mq'][0], 60.0)
+        self.assertEqual(variant.INFO['normal_mq'][1], 29.0)
+        self.assertEqual(variant.INFO['normal_bq'][0], 0.0)
+        self.assertEqual(variant.INFO['normal_bq'][1], 0.0)
+        self.assertEqual(variant.INFO['normal_pos'][0], 95.0)
+        self.assertEqual(variant.INFO['normal_pos'][1], 56.0)
+
+
     def test_annotator_bams_order(self):
         input_file = pkg_resources.resource_filename(__name__, "resources/test1.vcf")
         output_vcf = pkg_resources.resource_filename(__name__, "resources/results/test_annotator1_output.vcf")

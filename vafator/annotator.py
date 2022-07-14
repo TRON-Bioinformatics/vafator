@@ -211,7 +211,7 @@ class Annotator(object):
                 [str(global_pos[variant.REF])] + [str(global_pos[alt]) for alt in variant.ALT])
 
     def _calculate_af(self, ac, dp):
-        return float(ac) / dp if dp > 0 else 0.0
+        return round(float(ac) / dp, 5) if dp > 0 else 0.0
 
     def run(self):
         batch = []
