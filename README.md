@@ -11,12 +11,19 @@ VAFator annotates the variants in a VCF file with technical annotations from mul
 Supports annotating somatic variant calls with the annotations from the normal and the tumor samples; although
 it can also be used for germline variant calls.
 
-Annotations:
+| Annotation                | Description                                                                                                                                                                                                       | INFO field   | Type  | Cardinality (§) |
+|---------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|-------|-----------------|
+| Allele frequency (AF)     | Ratio of reads supporting the alternate allele                                                                                                                                                                    | {sample}_af  | float | A               |
+| Allele count (AC)         | Count of reads supporting the alternate allele                                                                                                                                                                    | {sample}_ac  | int   | A               |
+| Depth of coverage (DP)    | Count of reads covering the position of the variant                                                                                                                                                               | {sample}_dp  | int   | 1               |
+| Expected allele frequency | Expected allele frequency assuming a multiplicity of the mutation m=1 (the number of DNA copies bearing a mutation) considering the given purity and ploidy/copy numbers | {sample}_eaf | float | 1               |
+| Power                     | Probability that a given somatic mutation is undetected given the total coverage, supporting reads and expected allele frequency                                                                                  | {sample}_pw  | float | A               |
+| Mapping quality median   | Median mapping quality of reads supporting each of the reference and the alternate alleles                                                                                                                        | {sample}_mq  | float | R               |
+| Base call quality median | Median base call quality of reads supporting each of the reference and the alternate alleles (not available for deletions)                                                                                        | {sample}_bq  | float | R               |
+| Position median          | Median position within reads supporting each of the reference and the alternate alleles (in indels this is the start position)                                                                                    | {sample}_pos | float | R               |
 
-* **Allele frequency (AF)**: ratio of reads supporting the alternate allele.
-* **Allele count (AC)**: count of reads supporting the alternate allele. 
-* **Depth of coverage (DP)**: number of reads covering the position of the variant
-* **Power**: probability that a given somatic mutation is undetected given the total coverage, supporting reads and expected allele frequency.
+§ cardinality is defined as in the VCF format specification: `A` refers to one value per alternate allele, 
+`R` refers to one value per possible allele (including the reference), `1` refers to one value.
 
 VAFator uses cyvcf2 (Pederson, 2017) to read/write VCF files and pysam (https://github.com/pysam-developers/pysam) to read BAM files.
 Both libraries are cython wrappers around HTSlib (Bonfield, 2021).
@@ -30,7 +37,6 @@ When installaing from PyPI there are some system dependencies that will need to 
 * libz
 * liblzma
 * htslib=1.14
-* 
 
 ## How to run
 
@@ -132,8 +138,8 @@ The Hatchet file expects the following columns, where any number of clones is su
 The output is a VCF with the some new annotations in the INFO field for the provided sample names.
 The example below contains vafator annotations for two samples named `normal` and `tumor`.
 ```
-chr1    12345       .       A       G       .       PASS  tumor_af=0.0;tumor_ac=0;tumor_dp=89;normal_af=0.0196;normal_ac=1;normal_dp=51
-chr2    12345       .       A       G,T       .       PASS  tumor_af=0.2,0.2;tumor_ac=2,2;tumor_dp=10;normal_af=0.0,0.0;normal_ac=0,0;normal_dp=10
+chr1    12345       .       A       G       .       PASS  tumor_af=0.0;tumor_ac=0;tumor_dp=89;tumor_mq=60.0,0.0;tumor_bq=32.0,0.0;tumor_pos=50.0,0.0;tumor_pw=0.75;tumor_eaf=0.5;normal_af=0.0196;normal_ac=1;normal_dp=51;normal_mq=60.0,10.0;tumor_bq=32.0,40.0;tumor_pos=50.0,10.0;tumor_pw=0.005;normal_eaf=0.5
+chr2    12345       .       A       G,T       .       PASS  tumor_af=0.2,0.2;tumor_ac=2,2;tumor_dp=10;tumor_mq=60.0,30.0,30.0;tumor_bq=32.0,45.0,30.0;tumor_pos=50.0,20.0,32.0;tumor_pw=0.65;tumor_eaf=0.5;normal_af=0.0,0.0;normal_ac=0,0;normal_dp=10;normal_mq=60.0,30.0,30.0;normal_bq=32.0,45.0,30.0;normal_pos=50.0,20.0,32.0;normal_pw=0.65;normal_eaf=0.5
 ```
 
 **NOTE**: notice that VAFator does not annotate samples in the FORMAT field, but in the INFO field
@@ -174,7 +180,7 @@ coordinates and sequence from the VCF file are taken into account. Any read supp
 is not counted. 
 
 **NOTE**: multiallelic mutations are not supported for indels, the indel in the multiallelic position will be 
-annotated with null values.
+annotated with null values. This problem can be circumvented by using the Nextflow normalization pipeline described above.
 
 ## Support for MNVs
 
