@@ -100,6 +100,24 @@ class Annotator(object):
                 'Type': 'Float',
                 'Number': '1'
             })
+            headers.append({
+                'ID': "{}_bq".format(s),
+                'Description': "Median base call quality of the reads supporting each allele",
+                'Type': 'Float',
+                'Number': 'R'
+            })
+            headers.append({
+                'ID': "{}_mq".format(s),
+                'Description': "Median mapping quality of the reads supporting each allele",
+                'Type': 'Float',
+                'Number': 'R'
+            })
+            headers.append({
+                'ID': "{}_pos".format(s),
+                'Description': "Median position within the read of the reads supporting each allele",
+                'Type': 'Float',
+                'Number': 'R'
+            })
 
             if len(bams) > 1:
                 for i, bam in enumerate(bams, start=1):
@@ -118,7 +136,19 @@ class Annotator(object):
                          'Description': "Probability of an undetected mutation given the observed supporting "
                                         "reads (AC), the observed total coverage (DP) and the provided tumor "
                                         "purity in the {} sample {}".format(s, n),
-                         'Type': 'Float', 'Number': 'A'}
+                         'Type': 'Float', 'Number': 'A'},
+                        {'ID': "{}_bq_{}".format(s, i),
+                         'Description': "Median base call quality of the reads supporting each allele in "
+                                        "the {} sample {}".format(s, n),
+                         'Type': 'Integer', 'Number': 'R'},
+                        {'ID': "{}_mq_{}".format(s, i),
+                         'Description': "Median mapping quality of the reads supporting each allele in "
+                                        "the {} sample {}".format(s, n),
+                         'Type': 'Integer', 'Number': 'R'},
+                        {'ID': "{}_pos_{}".format(s, i),
+                         'Description': "Median position within the read of the reads supporting each allele in "
+                                        "the {} sample {}".format(s, n),
+                         'Type': 'Integer', 'Number': 'R'},
                     ]
         return headers
 
@@ -131,6 +161,9 @@ class Annotator(object):
         for sample, bams in self.bam_readers.items():
             global_dp = 0
             global_ac = Counter()
+            global_bq = Counter()
+            global_mq = Counter()
+            global_pos = Counter()
             for i, bam in enumerate(bams):
                 pileups = get_variant_pileup(
                     variant=variant, bam=bam,
@@ -147,7 +180,19 @@ class Annotator(object):
                             [str(self.power.calculate_power(
                                 ac=coverage_metrics.ac[alt], dp=coverage_metrics.dp, sample=sample, variant=variant
                             )) for alt in variant.ALT])
+                        variant.INFO["{}_bq_{}".format(sample, i + 1)] = ",".join(
+                            [str(coverage_metrics.bqs[variant.REF])] +
+                            [str(coverage_metrics.bqs[alt]) for alt in variant.ALT])
+                        variant.INFO["{}_mq_{}".format(sample, i + 1)] = ",".join(
+                            [str(coverage_metrics.mqs[variant.REF])] +
+                            [str(coverage_metrics.mqs[alt]) for alt in variant.ALT])
+                        variant.INFO["{}_pos_{}".format(sample, i + 1)] = ",".join(
+                            [str(coverage_metrics.positions[variant.REF])] +
+                            [str(coverage_metrics.positions[alt]) for alt in variant.ALT])
                     global_ac.update(coverage_metrics.ac)
+                    global_bq.update(coverage_metrics.bqs)
+                    global_mq.update(coverage_metrics.mqs)
+                    global_pos.update(coverage_metrics.positions)
                     global_dp += coverage_metrics.dp
 
             variant.INFO["{}_af".format(sample)] = ",".join([str(self._calculate_af(global_ac[alt], global_dp)) for alt in variant.ALT])
@@ -158,9 +203,15 @@ class Annotator(object):
             variant.INFO["{}_pw".format(sample)] = ",".join(
                 [str(self.power.calculate_power(ac=global_ac[alt], dp=global_dp, sample=sample, variant=variant))
                  for alt in variant.ALT])
+            variant.INFO["{}_bq".format(sample)] = ",".join(
+                [str(global_bq[variant.REF])] + [str(global_bq[alt]) for alt in variant.ALT])
+            variant.INFO["{}_mq".format(sample)] = ",".join(
+                [str(global_mq[variant.REF])] + [str(global_mq[alt]) for alt in variant.ALT])
+            variant.INFO["{}_pos".format(sample)] = ",".join(
+                [str(global_pos[variant.REF])] + [str(global_pos[alt]) for alt in variant.ALT])
 
     def _calculate_af(self, ac, dp):
-        return float(ac) / dp if dp > 0 else 0.0
+        return round(float(ac) / dp, 5) if dp > 0 else 0.0
 
     def run(self):
         batch = []

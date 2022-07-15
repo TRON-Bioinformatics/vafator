@@ -22,7 +22,7 @@ class PowerCalculator:
         # organisms
         expected_vaf = self.calculate_expected_vaf(sample, variant)
         pvalue = binom.cdf(k=ac, n=dp, p=expected_vaf)
-        return pvalue
+        return round(pvalue, 5)
 
     def calculate_expected_vaf(self, sample, variant):
         purity = self.purities.get(sample, DEFAULT_PURITY)
