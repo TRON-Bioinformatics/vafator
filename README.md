@@ -1,4 +1,4 @@
-<img src="images/VAFator-logos.jpeg" width="200">
+<img src="images/VAFator-banner.jpeg" width="600">
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5565743.svg)](https://doi.org/10.5281/zenodo.5565743)
 [![PyPI version](https://badge.fury.io/py/vafator.svg)](https://badge.fury.io/py/vafator)

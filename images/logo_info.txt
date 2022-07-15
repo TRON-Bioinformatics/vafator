@@ -1,7 +1,7 @@
 
-            Fonts used: Lato-Regular 
+            Fonts used: NexaRustSlab-Black 
 
-            Colors used: F7BF4F,271801  
+            Colors used: 95A1F1,020202  
 
-            Icon url: https://thenounproject.com/term/centipede/1368907  
+            Icon url: https://thenounproject.com/term/glasses/9568  
         
