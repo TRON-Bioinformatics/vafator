@@ -68,17 +68,23 @@ class PowerCalculator:
         p_1 = self._calculate_p(m=k - 1, n=n)
         return (self.fpr - p) / (p_1 - p)
 
-    def calculate_absolute_power(self, sample, variant, dp: int, ac: int):
+    def _calculate_k(self, dp):
+        k = 1
+        while self._calculate_p(m=k, n=dp) > self.fpr:
+            k += 1
+
+        return k
+
+    def calculate_absolute_power(self, sample, variant, dp: int):
         """
         This is the power as defined in Carter, 2012, where n is the total coverage (dp),
-        f is the variant allele frequency and k is the number of reads supporting the mutation
+        f is the expected variant allele frequency and k is minimum number of reads supporting the mutation where
+        P <= FPR
         """
-        power = 0.0
-        if ac > 0:
-            k = ac
-            n = dp
-            f = self.calculate_expected_vaf(sample, variant)
-            power = 1 - binom.cdf(k=k - 1, n=n, p=f) + self._calculate_d(k=k, n=n) * binom(n, f).pmf(k)
-        return round(power, 5)
+        k = self._calculate_k(dp=dp)
+        n = dp
+        f = self.calculate_expected_vaf(sample, variant)
+        power = 1 - binom.cdf(k=k - 1, n=n, p=f) + self._calculate_d(k=k, n=n) * binom(n, f).pmf(k)
+        return round(power, 5), k
 
 

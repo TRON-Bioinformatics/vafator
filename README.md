@@ -79,14 +79,14 @@ Reads flagged as duplicates are not counted.
 
 ### Power to detect a somatic mutation and probability of an undetected somatic mutation
 
-We estimate the power to detect a somatic mutation as described in Carter, 2012.
+We estimate the power to detect a somatic mutation given a total coverage (DP), k and expected VAF, 
+as described in Carter, 2012.
 
-Also, we estimate the probability that there is an undetected somatic mutation at a specific genomic location, given the
-- n: observed number of reads at the position (coverage)
-- k: observed number of reads supporting the mutation (variant reads)
-- f: expected variant allele frequency (VAF)
-
-We model this with a binomial distribution `binom(n, f, k)`.
+Where k is the minimum number of supporting reads such that the
+probability of observing k or more non-reference reads due to sequencing error is less than the 
+defined false positive rate (FPR). 
+Default FPR is 5x10^-7 and default error rate is 10^-3.
+These values can be changes using `--fpr` and `--error-rate`.
 
 The expected VAF is by default 0.5, making several assumptions: 
 1) no normal contamination in tumor sample (default purity: 1.0)
@@ -114,6 +114,14 @@ chr1    10000   20000   3.2
 chr1    20000   30000   2.6
 [...]
 ```
+
+Also, we estimate the probability that there is an undetected somatic mutation at a specific genomic location, given:
+- n: observed number of reads at the position (DP)
+- ac: observed number of reads supporting the mutation (AC
+- f: expected variant allele frequency (VAF)
+
+We model this with a binomial distribution `binom(n, f, ac)`.
+
 
 **NOTE**: beware that unlike VCF files where genomic positions are 1-based, BedGraph positions are 0-based. The intervals
 in a BED file are half-closed.
