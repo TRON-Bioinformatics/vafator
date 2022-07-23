@@ -37,14 +37,18 @@ class Annotator(object):
                  mapping_qual_thr=0,
                  base_call_qual_thr=29,
                  tumor_ploidies: dict = {},
-                 normal_ploidy=2):
+                 normal_ploidy=2,
+                 fpr=None,
+                 error_rate=None):
 
         self.mapping_quality_threshold = mapping_qual_thr
         self.base_call_quality_threshold = base_call_qual_thr
         self.purities = purities
         self.tumor_ploidies = tumor_ploidies
         self.normal_ploidy = normal_ploidy
-        self.power = PowerCalculator(normal_ploidy=normal_ploidy, tumor_ploidies=tumor_ploidies, purities=purities)
+        self.power = PowerCalculator(
+            normal_ploidy=normal_ploidy, tumor_ploidies=tumor_ploidies, purities=purities,
+            error_rate=error_rate, fpr=fpr)
 
         self.vcf = VCF(input_vcf)
         # sets a line in the header with the command used to annotate the file
