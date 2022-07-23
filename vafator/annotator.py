@@ -88,33 +88,46 @@ class Annotator(object):
                 'Number': 'A'
             })
             headers.append({
-                'ID': "{}_pw".format(s),
+                'ID': "{}_pu".format(s),
                 'Description': "Probability of an undetected mutation given the observed supporting reads (AC), "
-                               "the observed total coverage (DP) and the provided tumor purity",
+                               "the observed total coverage (DP) and the provided tumor purity in the "
+                               "{} sample/s".format(s),
+                'Type': 'Float',
+                'Number': 'A'
+            })
+            headers.append({
+                'ID': "{}_pw".format(s),
+                'Description': "Power to detect a somatic mutation as described in Absolute "
+                               "given the observed supporting reads (AC), the observed total coverage (DP) "
+                               "and the provided tumor purity and ploidies in the {} sample/s".format(s),
                 'Type': 'Float',
                 'Number': 'A'
             })
             headers.append({
                 'ID': "{}_eaf".format(s),
-                'Description': "Expected VAF considering the purity and ploidy/copy number",
+                'Description': "Expected VAF considering the purity and ploidy/copy number in the "
+                               "{} sample/s".format(s),
                 'Type': 'Float',
                 'Number': '1'
             })
             headers.append({
                 'ID': "{}_bq".format(s),
-                'Description': "Median base call quality of the reads supporting each allele",
+                'Description': "Median base call quality of the reads supporting each allele in the "
+                               "{} sample/s".format(s),
                 'Type': 'Float',
                 'Number': 'R'
             })
             headers.append({
                 'ID': "{}_mq".format(s),
-                'Description': "Median mapping quality of the reads supporting each allele",
+                'Description': "Median mapping quality of the reads supporting each allele in the "
+                               "{} sample/s".format(s),
                 'Type': 'Float',
                 'Number': 'R'
             })
             headers.append({
                 'ID': "{}_pos".format(s),
-                'Description': "Median position within the read of the reads supporting each allele",
+                'Description': "Median position within the read of the reads supporting each allele in the "
+                               "{} sample/s".format(s),
                 'Type': 'Float',
                 'Number': 'R'
             })
@@ -132,10 +145,15 @@ class Annotator(object):
                         {'ID': "{}_ac_{}".format(s, i),
                          'Description': "Allele count for the alternate alleles in the {} sample {}".format(s, n),
                          'Type': 'Integer', 'Number': 'A'},
-                        {'ID': "{}_pw_{}".format(s, i),
+                        {'ID': "{}_pu_{}".format(s, i),
                          'Description': "Probability of an undetected mutation given the observed supporting "
                                         "reads (AC), the observed total coverage (DP) and the provided tumor "
                                         "purity in the {} sample {}".format(s, n),
+                         'Type': 'Float', 'Number': 'A'},
+                        {'ID': "{}_pw_{}".format(s, i),
+                         'Description': "Power to detect a somatic mutation as described in Absolute "
+                                        "given the observed supporting reads (AC), the observed total coverage (DP) "
+                                        "and the provided tumor purity and ploidies in the {} sample {}".format(s, n),
                          'Type': 'Float', 'Number': 'A'},
                         {'ID': "{}_bq_{}".format(s, i),
                          'Description': "Median base call quality of the reads supporting each allele in "
@@ -176,8 +194,12 @@ class Annotator(object):
                             [str(self._calculate_af(coverage_metrics.ac[alt], coverage_metrics.dp)) for alt in variant.ALT])
                         variant.INFO["{}_ac_{}".format(sample, i + 1)] = ",".join([str(coverage_metrics.ac[alt]) for alt in variant.ALT])
                         variant.INFO["{}_dp_{}".format(sample, i + 1)] = coverage_metrics.dp
-                        variant.INFO["{}_pw_{}".format(sample, i + 1)] = ",".join(
+                        variant.INFO["{}_pu_{}".format(sample, i + 1)] = ",".join(
                             [str(self.power.calculate_power(
+                                ac=coverage_metrics.ac[alt], dp=coverage_metrics.dp, sample=sample, variant=variant
+                            )) for alt in variant.ALT])
+                        variant.INFO["{}_pw_{}".format(sample, i + 1)] = ",".join(
+                            [str(self.power.calculate_absolute_power(
                                 ac=coverage_metrics.ac[alt], dp=coverage_metrics.dp, sample=sample, variant=variant
                             )) for alt in variant.ALT])
                         variant.INFO["{}_bq_{}".format(sample, i + 1)] = ",".join(
@@ -200,8 +222,12 @@ class Annotator(object):
             variant.INFO["{}_dp".format(sample)] = global_dp
             variant.INFO["{}_eaf".format(sample)] = str(self.power.calculate_expected_vaf(
                 sample=pysam, variant=variant))
-            variant.INFO["{}_pw".format(sample)] = ",".join(
+            variant.INFO["{}_pu".format(sample)] = ",".join(
                 [str(self.power.calculate_power(ac=global_ac[alt], dp=global_dp, sample=sample, variant=variant))
+                 for alt in variant.ALT])
+            variant.INFO["{}_pw".format(sample)] = ",".join(
+                [str(self.power.calculate_absolute_power(
+                    ac=global_ac[alt], dp=global_dp, sample=sample, variant=variant))
                  for alt in variant.ALT])
             variant.INFO["{}_bq".format(sample)] = ",".join(
                 [str(global_bq[variant.REF])] + [str(global_bq[alt]) for alt in variant.ALT])

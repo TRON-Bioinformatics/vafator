@@ -79,6 +79,6 @@ class PowerCalculator:
             n = dp
             f = self.calculate_expected_vaf(sample, variant)
             power = 1 - binom.cdf(k=k - 1, n=n, p=f) + self._calculate_d(k=k, n=n) * binom(n, f).pmf(k)
-        return power
+        return round(power, 5)
 
 

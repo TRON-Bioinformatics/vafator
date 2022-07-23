@@ -159,7 +159,7 @@ class TestAnnotator(TestCase):
         self.assertEqual(variant.INFO['normal_ac'], 3)
         self.assertEqual(variant.INFO['normal_dp'], 3)
         self.assertEqual(variant.INFO['normal_af'], 1.0)
-        self.assertEqual(variant.INFO['normal_pw'], 1.0)
+        self.assertEqual(variant.INFO['normal_pu'], 1.0)
         self.assertEqual(variant.INFO['normal_eaf'], 0.5)
         self.assertEqual(variant.INFO['normal_mq'][0], 0)
         self.assertEqual(variant.INFO['normal_mq'][1], 60.0)
@@ -175,7 +175,7 @@ class TestAnnotator(TestCase):
         # these values are rounded to six digits inside the VCF, not sure why when read the representation is
         # different...
         self.assertEqual(round(variant.INFO['normal_af'], 5), 0.65)
-        self.assertEqual(round(variant.INFO['normal_pw'], 5), 0.94234)
+        self.assertEqual(round(variant.INFO['normal_pu'], 5), 0.94234)
         self.assertEqual(variant.INFO['normal_eaf'], 0.5)
         self.assertEqual(variant.INFO['normal_mq'][0], 60.0)
         self.assertEqual(variant.INFO['normal_mq'][1], 60.0)
@@ -192,7 +192,7 @@ class TestAnnotator(TestCase):
         # these values are rounded to six digits inside the VCF, not sure why when read the representation is
         # different...
         self.assertEqual(round(variant.INFO['normal_af'], 5), 0.95238)
-        self.assertEqual(round(variant.INFO['normal_pw'], 5), 1.0)
+        self.assertEqual(round(variant.INFO['normal_pu'], 5), 1.0)
         self.assertEqual(variant.INFO['normal_eaf'], 0.5)
         self.assertEqual(variant.INFO['normal_mq'][0], 60.0)
         self.assertEqual(variant.INFO['normal_mq'][1], 60.0)
@@ -209,7 +209,7 @@ class TestAnnotator(TestCase):
         # these values are rounded to six digits inside the VCF, not sure why when read the representation is
         # different...
         self.assertEqual(round(variant.INFO['normal_af'], 5), 0.5)
-        self.assertEqual(round(variant.INFO['normal_pw'], 5), 0.75)
+        self.assertEqual(round(variant.INFO['normal_pu'], 5), 0.75)
         self.assertEqual(variant.INFO['normal_eaf'], 0.5)
         self.assertEqual(variant.INFO['normal_mq'][0], 60.0)
         self.assertEqual(variant.INFO['normal_mq'][1], 29.0)
@@ -262,10 +262,16 @@ class TestAnnotator(TestCase):
         self.assertTrue("normal_ac" in info_annotations)
         self.assertTrue("tumor_dp" in info_annotations)
         self.assertTrue("normal_dp" in info_annotations)
-        self.assertTrue("tumor_pw" in info_annotations)
-        self.assertTrue("normal_pw" in info_annotations)
+        self.assertTrue("tumor_pu" in info_annotations)
+        self.assertTrue("normal_pu" in info_annotations)
         self.assertTrue("normal_eaf" in info_annotations)
         self.assertTrue("tumor_eaf" in info_annotations)
+        self.assertTrue("tumor_pw" in info_annotations)
+        self.assertTrue("normal_pw" in info_annotations)
+        self.assertTrue("tumor_bq" in info_annotations)
+        self.assertTrue("normal_bq" in info_annotations)
+        self.assertTrue("tumor_mq" in info_annotations)
+        self.assertTrue("normal_mq" in info_annotations)
 
         annotator = Annotator(
             input_vcf=input_file, output_vcf=output_vcf, input_bams={"normal": [bam1], "tumor": [bam2]},
