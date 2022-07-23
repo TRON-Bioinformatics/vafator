@@ -11,16 +11,17 @@ VAFator annotates the variants in a VCF file with technical annotations from mul
 Supports annotating somatic variant calls with the annotations from the normal and the tumor samples; although
 it can also be used for germline variant calls.
 
-| Annotation                | Description                                                                                                                                                                                                       | INFO field   | Type  | Cardinality (§) |
-|---------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|-------|-----------------|
-| Allele frequency (AF)     | Ratio of reads supporting the alternate allele                                                                                                                                                                    | {sample}_af  | float | A               |
-| Allele count (AC)         | Count of reads supporting the alternate allele                                                                                                                                                                    | {sample}_ac  | int   | A               |
-| Depth of coverage (DP)    | Count of reads covering the position of the variant                                                                                                                                                               | {sample}_dp  | int   | 1               |
+| Annotation                | Description                                                                                                                                                              | INFO field   | Type  | Cardinality (§) |
+|---------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|-------|-----------------|
+| Allele frequency (AF)     | Ratio of reads supporting the alternate allele                                                                                                                           | {sample}_af  | float | A               |
+| Allele count (AC)         | Count of reads supporting the alternate allele                                                                                                                           | {sample}_ac  | int   | A               |
+| Depth of coverage (DP)    | Count of reads covering the position of the variant                                                                                                                      | {sample}_dp  | int   | 1               |
 | Expected allele frequency | Expected allele frequency assuming a multiplicity of the mutation m=1 (the number of DNA copies bearing a mutation) considering the given purity and ploidy/copy numbers | {sample}_eaf | float | 1               |
-| Power                     | Probability that a given somatic mutation is undetected given the total coverage, supporting reads and expected allele frequency                                                                                  | {sample}_pw  | float | A               |
-| Mapping quality median   | Median mapping quality of reads supporting each of the reference and the alternate alleles                                                                                                                        | {sample}_mq  | float | R               |
-| Base call quality median | Median base call quality of reads supporting each of the reference and the alternate alleles (not available for deletions)                                                                                        | {sample}_bq  | float | R               |
-| Position median          | Median position within reads supporting each of the reference and the alternate alleles (in indels this is the start position)                                                                                    | {sample}_pos | float | R               |
+| Probability undetected    | Probability that a given somatic mutation is undetected given the total coverage, supporting reads and expected allele frequency                                         | {sample}_pu  | float | A               |
+| Power                     | Power to detect a somatic mutation given the total coverage, supporting reads and expected allele frequency (Carter, 2012)                                               | {sample}_pw  | float | A               |
+| Mapping quality median    | Median mapping quality of reads supporting each of the reference and the alternate alleles                                                                               | {sample}_mq  | float | R               |
+| Base call quality median  | Median base call quality of reads supporting each of the reference and the alternate alleles (not available for deletions)                                               | {sample}_bq  | float | R               |
+| Position median           | Median position within reads supporting each of the reference and the alternate alleles (in indels this is the start position)                                           | {sample}_pos | float | R               |
 
 § cardinality is defined as in the VCF format specification: `A` refers to one value per alternate allele, 
 `R` refers to one value per possible allele (including the reference), `1` refers to one value.
@@ -76,9 +77,11 @@ Overlapping reads from read pairs are not double counted. The read with the high
 Reads flagged as duplicates are not counted.
 
 
-### Power (or probability of an undetected somatic mutation)
+### Power to detect a somatic mutation and probability of an undetected somatic mutation
 
-We estimate the probability that there is an undetected somatic mutation at a specific genomic location, given the
+We estimate the power to detect a somatic mutation as described in Carter, 2012.
+
+Also, we estimate the probability that there is an undetected somatic mutation at a specific genomic location, given the
 - n: observed number of reads at the position (coverage)
 - k: observed number of reads supporting the mutation (variant reads)
 - f: expected variant allele frequency (VAF)
@@ -94,8 +97,6 @@ The expected VAF is by default 0.5, making several assumptions:
 Expected VAF (f) is calculated as follows:
 
 ![Expected VAF](images/expected_vaf_formula.png)
-
-This is a simplification of the power calculation in Carter, 2012.
 
 The purity in a given tumor sample can be specified with the parameter `--purity primary 0.5`.
 
@@ -116,8 +117,10 @@ chr1    20000   30000   2.6
 
 **NOTE**: beware that unlike VCF files where genomic positions are 1-based, BedGraph positions are 0-based. The intervals
 in a BED file are half-closed.
+
 **NOTE 2**: local copy numbers may be float numbers
-**NOTE 3**: beware that no multiple test correction is applied to the power
+
+**NOTE 3**: beware that no multiple test correction is applied to the probability and power calculations
 
 In order to integrate Hatchet copy numbers were multiple clones are considered, there is a specific 
 command `hatchet2bed` that transforms a Hatchet .ucn output file into one BedGraph file as described above per sample.

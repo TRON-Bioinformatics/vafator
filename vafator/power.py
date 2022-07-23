@@ -48,7 +48,7 @@ class PowerCalculator:
 
     def _calculate_p(self, m: int, n: int):
         """
-        This is the P defined in Carter, 2011, where m is the number of observed reads supporting the mutation and
+        This is the P defined in Carter, 2012, where m is the number of observed reads supporting the mutation and
         n is the total coverage (dp).
         This calculates the probability of observing k or more identical non-reference reads due to sequencing error.
         """
@@ -59,7 +59,7 @@ class PowerCalculator:
 
     def _calculate_d(self, k: int, n: int):
         """
-        This is the d defined in Carter, 2011, where k is the number of observed reads supporting the mutation and
+        This is the d defined in Carter, 2012, where k is the number of observed reads supporting the mutation and
         n is the total coverage (dp)
         Ratio between difference between FPR and prob. of observing >= k reads and
         difference between prob. or observing k - 1 reads and observing k reads
@@ -70,7 +70,7 @@ class PowerCalculator:
 
     def calculate_absolute_power(self, sample, variant, dp: int, ac: int):
         """
-        This is the power as defined in Carter, 2011, where n is the total coverage (dp),
+        This is the power as defined in Carter, 2012, where n is the total coverage (dp),
         f is the variant allele frequency and k is the number of reads supporting the mutation
         """
         power = 0.0
