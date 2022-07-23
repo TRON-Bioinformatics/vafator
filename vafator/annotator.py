@@ -37,14 +37,18 @@ class Annotator(object):
                  mapping_qual_thr=0,
                  base_call_qual_thr=29,
                  tumor_ploidies: dict = {},
-                 normal_ploidy=2):
+                 normal_ploidy=2,
+                 fpr=None,
+                 error_rate=None):
 
         self.mapping_quality_threshold = mapping_qual_thr
         self.base_call_quality_threshold = base_call_qual_thr
         self.purities = purities
         self.tumor_ploidies = tumor_ploidies
         self.normal_ploidy = normal_ploidy
-        self.power = PowerCalculator(normal_ploidy=normal_ploidy, tumor_ploidies=tumor_ploidies, purities=purities)
+        self.power = PowerCalculator(
+            normal_ploidy=normal_ploidy, tumor_ploidies=tumor_ploidies, purities=purities,
+            error_rate=error_rate, fpr=fpr)
 
         self.vcf = VCF(input_vcf)
         # sets a line in the header with the command used to annotate the file
@@ -98,10 +102,18 @@ class Annotator(object):
             headers.append({
                 'ID': "{}_pw".format(s),
                 'Description': "Power to detect a somatic mutation as described in Absolute "
-                               "given the observed supporting reads (AC), the observed total coverage (DP) "
+                               "given the observed total coverage (DP) "
                                "and the provided tumor purity and ploidies in the {} sample/s".format(s),
                 'Type': 'Float',
-                'Number': 'A'
+                'Number': '1'
+            })
+            headers.append({
+                'ID': "{}_k".format(s),
+                'Description': "Minimum number of supporting reads, k, such that the probability of observing "
+                               "k or more non-reference reads due to sequencing error is less than the defined FPR "
+                               "in the {} sample/s".format(s),
+                'Type': 'Float',
+                'Number': '1'
             })
             headers.append({
                 'ID': "{}_eaf".format(s),
@@ -152,9 +164,15 @@ class Annotator(object):
                          'Type': 'Float', 'Number': 'A'},
                         {'ID': "{}_pw_{}".format(s, i),
                          'Description': "Power to detect a somatic mutation as described in Absolute "
-                                        "given the observed supporting reads (AC), the observed total coverage (DP) "
+                                        "given the observed total coverage (DP) "
                                         "and the provided tumor purity and ploidies in the {} sample {}".format(s, n),
-                         'Type': 'Float', 'Number': 'A'},
+                         'Type': 'Float', 'Number': '1'},
+                        {'ID': "{}_k_{}".format(s, i),
+                         'Description': "Minimum number of supporting reads, k, such that the probability of observing "
+                                        "k or more non-reference reads due to sequencing error is less than the "
+                                        "defined FPR in the {} sample {}".format(s, n),
+                         'Type': 'Float',
+                         'Number': '1'},
                         {'ID': "{}_bq_{}".format(s, i),
                          'Description': "Median base call quality of the reads supporting each allele in "
                                         "the {} sample {}".format(s, n),
@@ -198,10 +216,10 @@ class Annotator(object):
                             [str(self.power.calculate_power(
                                 ac=coverage_metrics.ac[alt], dp=coverage_metrics.dp, sample=sample, variant=variant
                             )) for alt in variant.ALT])
-                        variant.INFO["{}_pw_{}".format(sample, i + 1)] = ",".join(
-                            [str(self.power.calculate_absolute_power(
-                                ac=coverage_metrics.ac[alt], dp=coverage_metrics.dp, sample=sample, variant=variant
-                            )) for alt in variant.ALT])
+                        power, k = self.power.calculate_absolute_power(
+                            dp=coverage_metrics.dp, sample=sample, variant=variant)
+                        variant.INFO["{}_pw_{}".format(sample, i + 1)] = str(power)
+                        variant.INFO["{}_k_{}".format(sample, i + 1)] = str(k)
                         variant.INFO["{}_bq_{}".format(sample, i + 1)] = ",".join(
                             [str(coverage_metrics.bqs[variant.REF])] +
                             [str(coverage_metrics.bqs[alt]) for alt in variant.ALT])
@@ -225,10 +243,10 @@ class Annotator(object):
             variant.INFO["{}_pu".format(sample)] = ",".join(
                 [str(self.power.calculate_power(ac=global_ac[alt], dp=global_dp, sample=sample, variant=variant))
                  for alt in variant.ALT])
-            variant.INFO["{}_pw".format(sample)] = ",".join(
-                [str(self.power.calculate_absolute_power(
-                    ac=global_ac[alt], dp=global_dp, sample=sample, variant=variant))
-                 for alt in variant.ALT])
+            power, k = self.power.calculate_absolute_power(
+                dp=global_dp, sample=sample, variant=variant)
+            variant.INFO["{}_pw".format(sample)] = str(power)
+            variant.INFO["{}_k".format(sample)] = str(k)
             variant.INFO["{}_bq".format(sample)] = ",".join(
                 [str(global_bq[variant.REF])] + [str(global_bq[alt]) for alt in variant.ALT])
             variant.INFO["{}_mq".format(sample)] = ",".join(
