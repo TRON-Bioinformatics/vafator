@@ -3,7 +3,7 @@ import argparse
 import sys
 import logging
 import vafator
-from power import DEFAULT_FPR, DEFAULT_ERROR_RATE
+from vafator.power import DEFAULT_FPR, DEFAULT_ERROR_RATE
 from vafator.hatchet2bed import run_hatchet2bed
 from vafator.ploidies import PloidyManager
 from vafator.annotator import Annotator
