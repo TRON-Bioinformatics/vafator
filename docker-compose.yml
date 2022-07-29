@@ -1,0 +1,15 @@
+version: "3.3"
+services:
+    jupyter-server:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        environment:
+            - JUPYTER_TOKEN=vafator
+            - NB_UID=$USER_ID
+            - NB_GID=$USER_GROUP  # this is the TRON group id, important for writing permissions
+        volumes:
+            - ${PWD}:/home/jovyan
+        ports:
+            - 8888:8888
+        container_name: vafator

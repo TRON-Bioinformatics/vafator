@@ -12,3 +12,6 @@ output/
 .tox/
 out
 vafator/tests/resources/results
+.cache
+.jupyter
+.local

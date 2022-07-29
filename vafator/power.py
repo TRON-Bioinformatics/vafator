@@ -1,3 +1,6 @@
+from typing import Optional
+
+from cyvcf2 import Variant
 from scipy.stats import binom
 from vafator.ploidies import default_ploidy_manager
 
@@ -11,20 +14,22 @@ DEFAULT_ERROR_RATE = 10**-3
 class PowerCalculator:
 
     def __init__(
-            self, tumor_ploidies, purities,
-            normal_ploidy=DEFAULT_NORMAL_PLOIDY,
-            fpr=DEFAULT_FPR,
-            error_rate=DEFAULT_ERROR_RATE
-    ):
+            self,
+            tumor_ploidies: dict,
+            purities: dict,
+            normal_ploidy: int = DEFAULT_NORMAL_PLOIDY,
+            fpr: float = DEFAULT_FPR,
+            error_rate: float = DEFAULT_ERROR_RATE):
+
         self.normal_ploidy = normal_ploidy
         self.purities = purities
         self.tumor_ploidies = tumor_ploidies
         self.fpr = fpr
         self.error_rate = error_rate
 
-    def calculate_power(self, dp, ac, sample, variant):
+    def calculate_power(self, dp: int, ac: int, sample: str, variant: Optional[Variant]) -> float:
         """
-        Return the binomial probability of observing ac supporting reads, given a total coverage dp and a
+        Return the binomial probability of observing ac or less supporting reads, given a total coverage dp and a
         expected VAF tumor purity / 2.
         """
         # NOTE: assumes normal ploidy of 2, this will not hold in sexual chromosomes except PARs or other no diploid
@@ -33,7 +38,7 @@ class PowerCalculator:
         pvalue = binom.cdf(k=ac, n=dp, p=expected_vaf)
         return round(pvalue, 5)
 
-    def calculate_expected_vaf(self, sample, variant):
+    def calculate_expected_vaf(self, sample: str, variant: Optional[Variant]) -> float:
         """
         Calculates expected VAF based on purity and local copy number.
         expected VAF = purity / adjusted tumor ploidy
@@ -46,7 +51,7 @@ class PowerCalculator:
         expected_vaf = purity / corrected_tumor_ploidy
         return expected_vaf
 
-    def _calculate_p(self, m: int, n: int):
+    def _calculate_p(self, m: int, n: int) -> float:
         """
         This is the P defined in Carter, 2012, where m is the number of observed reads supporting the mutation and
         n is the total coverage (dp).
@@ -57,7 +62,7 @@ class PowerCalculator:
             result = 1 - binom.cdf(k=m - 1, n=n, p=self.error_rate / 3)
         return result
 
-    def _calculate_d(self, k: int, n: int):
+    def _calculate_d(self, k: int, n: int) -> float:
         """
         This is the d defined in Carter, 2012, where k is the number of observed reads supporting the mutation and
         n is the total coverage (dp)
@@ -68,14 +73,14 @@ class PowerCalculator:
         p_1 = self._calculate_p(m=k - 1, n=n)
         return (self.fpr - p) / (p_1 - p)
 
-    def _calculate_k(self, dp):
+    def _calculate_k(self, dp: int) -> int:
         k = 1
         while self._calculate_p(m=k, n=dp) > self.fpr:
             k += 1
 
         return k
 
-    def calculate_absolute_power(self, sample, variant, dp: int):
+    def calculate_absolute_power(self, sample, variant, dp: int) -> float:
         """
         This is the power as defined in Carter, 2012, where n is the total coverage (dp),
         f is the expected variant allele frequency and k is minimum number of reads supporting the mutation where

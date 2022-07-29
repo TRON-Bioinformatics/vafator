@@ -14,3 +14,9 @@ integration_tests:
 	bash tests/integration_test_04.sh
 	bash tests/integration_test_05.sh
 	bash tests/integration_test_06.sh
+
+jupyter:
+	export USER_ID=$$(id -u $$USER); export USER_GROUP=$$(id -g $$USER); docker-compose up -d --build
+
+jupyter-down:
+	docker-compose down
