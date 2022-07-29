@@ -3,6 +3,7 @@ import argparse
 import sys
 import logging
 import vafator
+from vafator.power import DEFAULT_FPR, DEFAULT_ERROR_RATE
 from vafator.hatchet2bed import run_hatchet2bed
 from vafator.ploidies import PloidyManager
 from vafator.annotator import Annotator
@@ -43,6 +44,10 @@ def annotator():
                              'expected BED format (default: 2)')
     parser.add_argument("--normal-ploidy", dest="normal_ploidy", required=False, default=2, type=int,
                         help="Normal ploidy for the power calculation (default: 2)")
+    parser.add_argument("--fpr", dest="fpr", required=False, default=DEFAULT_FPR, type=float,
+                        help="False Positive Rate (FPR) to use in the power calculation")
+    parser.add_argument("--error-rate", dest="error_rate", required=False, default=DEFAULT_ERROR_RATE, type=float,
+                        help="Error rate to use in the power calculation")
 
     args = parser.parse_args()
 
@@ -89,7 +94,9 @@ def annotator():
             base_call_qual_thr=args.base_call_quality,
             purities=purities,
             tumor_ploidies=tumor_ploidies,
-            normal_ploidy=int(args.normal_ploidy)
+            normal_ploidy=int(args.normal_ploidy),
+            fpr=args.fpr,
+            error_rate=args.error_rate
         )
         annotator.run()
     except Exception as e:
