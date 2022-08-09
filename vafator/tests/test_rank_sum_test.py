@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from rank_sum_test import calculate_rank_sum_test
+from vafator.rank_sum_test import calculate_rank_sum_test
 
 
 class TestRankSumTest(TestCase):

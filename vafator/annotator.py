@@ -10,7 +10,7 @@ import json
 import asyncio
 import time
 
-from rank_sum_test import calculate_rank_sum_test
+from vafator.rank_sum_test import calculate_rank_sum_test
 from vafator.power import PowerCalculator, DEFAULT_ERROR_RATE, DEFAULT_FPR
 from vafator.pileups import get_variant_pileup, get_metrics
 
