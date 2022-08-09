@@ -157,7 +157,7 @@ The Hatchet file expects the following columns, where any number of clones is su
 We apply the Wilcoxon rank sum test between the reference and alternate distributions of mapping qualities, 
 base call qualities and position within the read. A mutation call were any of these three tests show a significant 
 difference between the reference and alternate reads may indicate a lower quality variant call.
-This follows the approach introduced by GATK, see here https://gatk.broadinstitute.org/hc/en-us/articles/360035531952-Rank-Sum-Test.
+This follows the approach introduced by GATK (DePristo et al., 2011).
 
 For each of the checked distributions we provide the statistic value of the rank sum test and its significance.
 The statistic value will be close to zero for similar distributions and further away from zero for dissimilar distributions.
@@ -225,3 +225,5 @@ correctly annotated by VAFator.
 - Pedersen, B. S., & Quinlan, A. R. (2017). cyvcf2: fast, flexible variant analysis with Python. Bioinformatics, 33(12), 1867–1869. https://doi.org/10.1093/BIOINFORMATICS/BTX057
 - Bonfield, J. K., Marshall, J., Danecek, P., Li, H., Ohan, V., Whitwham, A., Keane, T., & Davies, R. M. (2021). HTSlib: C library for reading/writing high-throughput sequencing data. GigaScience, 10(2). https://doi.org/10.1093/GIGASCIENCE/GIAB007
 - Carter, S. L., Cibulskis, K., Helman, E., McKenna, A., Shen, H., Zack, T., Laird, P. W., Onofrio, R. C., Winckler, W., Weir, B. A., Beroukhim, R., Pellman, D., Levine, D. A., Lander, E. S., Meyerson, M., & Getz, G. (2012). Absolute quantification of somatic DNA alterations in human cancer. Nature Biotechnology 2012 30:5, 30(5), 413–421. https://doi.org/10.1038/nbt.2203
+- DePristo M, Banks E, Poplin R, Garimella K, Maguire J, Hartl C, Philippakis A, del Angel G, Rivas MA, Hanna M, McKenna A, Fennell T, Kernytsky A, Sivachenko A, Cibulskis K, Gabriel S, Altshuler D, Daly M. (2011). A framework for variation discovery and genotyping using next-generation DNA sequencing data. Nat Genet, 43:491-498. DOI: 10.1038/ng.806.
+
