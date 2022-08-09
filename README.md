@@ -7,22 +7,34 @@
 [![License](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
 
 
-VAFator annotates the variants in a VCF file with technical annotations from multiple BAM files. 
-Supports annotating somatic variant calls with the annotations from the normal and the tumor samples; although
-it can also be used for germline variant calls.
+VAFator annotates the variants in a VCF file with technical annotations extracted from one or more BAM alignment files. 
+We implement a set of basic coverage annotations and also more sophisticated published annotations used to assess the 
+quality of every variant call.
+Any arbitrary number of BAM files from different samples and/or technical replicates can be provided.
+The aim of VAFator is to provide these technical annotations with independence of the variant caller and maintaining
+a flexible read filtering. 
+This allows to scrutinize the results of variant calling in a wide set of use cases, eg: benchmark of variant callers, 
+somatic variant calling, tumor evolution with multiple samples at different time points, comparison of replicates.
 
-| Annotation                | Description                                                                                                                                                                                       | INFO field   | Type  | Cardinality (§) |
-|---------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|-------|-----------------|
-| Allele frequency (AF)     | Ratio of reads supporting the alternate allele                                                                                                                                                    | {sample}_af  | float | A               |
-| Allele count (AC)         | Count of reads supporting the alternate allele                                                                                                                                                    | {sample}_ac  | int   | A               |
-| Depth of coverage (DP)    | Count of reads covering the position of the variant                                                                                                                                               | {sample}_dp  | int   | 1               |
-| Expected allele frequency | Expected allele frequency assuming a multiplicity of the mutation m=1 (the number of DNA copies bearing a mutation) considering the given purity and ploidy/copy numbers                          | {sample}_eaf | float | 1               |
-| Probability undetected    | Probability that a given somatic mutation is undetected given the total coverage, supporting reads and expected allele frequency                                                                  | {sample}_pu  | float | A               |
-| Power                     | Power to detect a somatic mutation given the total coverage and expected allele frequency (Carter, 2012)                                                                                          | {sample}_pw  | float | 1               |
-| k                         | Minimum number of supporting reads such that the probability of observing k or more non-reference reads due to sequencing error is less than the defined false positive rate (FPR) (Carter, 2012) | {sample}_k   | float | 1               |
-| Mapping quality median    | Median mapping quality of reads supporting each of the reference and the alternate alleles                                                                                                        | {sample}_mq  | float | R               |
-| Base call quality median  | Median base call quality of reads supporting each of the reference and the alternate alleles (not available for deletions)                                                                        | {sample}_bq  | float | R               |
-| Position median           | Median position within reads supporting each of the reference and the alternate alleles (in indels this is the start position)                                                                    | {sample}_pos | float | R               |
+| Annotation                              | Description                                                                                                                                                                                             | INFO field        | Type  | Cardinality (§) |
+|-----------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|-------|-----------------|
+| Allele frequency (AF)                   | Ratio of reads supporting the alternate allele                                                                                                                                                          | {sample}_af       | float | A               |
+| Allele count (AC)                       | Count of reads supporting the alternate allele                                                                                                                                                          | {sample}_ac       | int   | A               |
+| Depth of coverage (DP)                  | Count of reads covering the position of the variant                                                                                                                                                     | {sample}_dp       | int   | 1               |
+| Expected allele frequency               | Expected allele frequency assuming a multiplicity of the mutation m=1 (the number of DNA copies bearing a mutation) considering the given purity and ploidy/copy numbers                                | {sample}_eaf      | float | 1               |
+| Probability undetected                  | Probability that a given somatic mutation is undetected given the total coverage, supporting reads and expected allele frequency                                                                        | {sample}_pu       | float | A               |
+| Power                                   | Power to detect a somatic mutation given the total coverage and expected allele frequency (Carter, 2012)                                                                                                | {sample}_pw       | float | 1               |
+| k                                       | Minimum number of supporting reads such that the probability of observing k or more non-reference reads due to sequencing error is less than the defined false positive rate (FPR) (Carter, 2012)       | {sample}_k        | float | 1               |
+| Mapping quality median                  | Median mapping quality of reads supporting each of the reference and the alternate alleles                                                                                                              | {sample}_mq       | float | R               |
+| Mapping quality rank sum test           | Rank sum test comparing the MQ distribution between reads supporting the reference and the alternate. Values closer to zero indicate similar distributions                                              | {sample}_rsmq     | float | A               |
+| Mapping quality rank sum test p-value   | Significance of the rank sum test comparing the MQ distribution between reads supporting the reference and the alternate. The null hypothesis is that there is no difference in the distributions       | {sample}_rsmq_pv  | float | A               |
+| Base call quality median                | Median base call quality of reads supporting each of the reference and the alternate alleles (not available for deletions)                                                                              | {sample}_bq       | float | R               |
+| Base call quality rank sum test         | Rank sum test comparing the BQ distribution between reads supporting the reference and the alternate. Values closer to zero indicate similar distributions                                              | {sample}_rsbq     | float | A               |
+| Base call quality rank sum test p-value | Significance of the rank sum test comparing the BQ distribution between reads supporting the reference and the alternate. The null hypothesis is that there is no difference in the distributions       | {sample}_rsbq_pv  | float | A               |
+| Position median                         | Median position within reads supporting each of the reference and the alternate alleles (in indels this is the start position)                                                                          | {sample}_pos      | float | R               |
+| Position rank sum test                  | Rank sum test comparing the position distribution between reads supporting the reference and the alternate. Values closer to zero indicate similar distributions                                        | {sample}_rspos    | float | A               |
+| Position rank sum test p-value          | Significance of the rank sum test comparing the position distribution between reads supporting the reference and the alternate. The null hypothesis is that there is no difference in the distributions | {sample}_rspos_pv | float | A               |
+
 
 § cardinality is defined as in the VCF format specification: `A` refers to one value per alternate allele, 
 `R` refers to one value per possible allele (including the reference), `1` refers to one value.
@@ -145,6 +157,18 @@ The Hatchet file expects the following columns, where any number of clones is su
 #CHR	START	END	SAMPLE	cn_normal	u_normal	cn_clone1	u_clone1	cn_clone2	u_clone2	cn_clone3	u_clone3	cn_clone4	u_clone4
 ```
 
+### Rank sum tests
+
+We apply the Wilcoxon rank sum test between the reference and alternate distributions of mapping qualities, 
+base call qualities and position within the read. A mutation call were any of these three tests show a significant 
+difference between the reference and alternate reads may indicate a lower quality variant call.
+This follows the approach introduced by GATK (DePristo et al., 2011).
+
+For each of the checked distributions we provide the statistic value of the rank sum test and its significance.
+The statistic value will be close to zero for similar distributions and further away from zero for dissimilar distributions.
+The significance value corresponds to the null hypothesis of similar distributions. 
+No multiple test correction is applied over this p-value.
+
 ## Understanding the output
 
 The output is a VCF with the some new annotations in the INFO field for the provided sample names.
@@ -206,3 +230,5 @@ correctly annotated by VAFator.
 - Pedersen, B. S., & Quinlan, A. R. (2017). cyvcf2: fast, flexible variant analysis with Python. Bioinformatics, 33(12), 1867–1869. https://doi.org/10.1093/BIOINFORMATICS/BTX057
 - Bonfield, J. K., Marshall, J., Danecek, P., Li, H., Ohan, V., Whitwham, A., Keane, T., & Davies, R. M. (2021). HTSlib: C library for reading/writing high-throughput sequencing data. GigaScience, 10(2). https://doi.org/10.1093/GIGASCIENCE/GIAB007
 - Carter, S. L., Cibulskis, K., Helman, E., McKenna, A., Shen, H., Zack, T., Laird, P. W., Onofrio, R. C., Winckler, W., Weir, B. A., Beroukhim, R., Pellman, D., Levine, D. A., Lander, E. S., Meyerson, M., & Getz, G. (2012). Absolute quantification of somatic DNA alterations in human cancer. Nature Biotechnology 2012 30:5, 30(5), 413–421. https://doi.org/10.1038/nbt.2203
+- DePristo M, Banks E, Poplin R, Garimella K, Maguire J, Hartl C, Philippakis A, del Angel G, Rivas MA, Hanna M, McKenna A, Fennell T, Kernytsky A, Sivachenko A, Cibulskis K, Gabriel S, Altshuler D, Daly M. (2011). A framework for variation discovery and genotyping using next-generation DNA sequencing data. Nat Genet, 43:491-498. DOI: 10.1038/ng.806.
+

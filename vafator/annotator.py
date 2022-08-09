@@ -1,5 +1,6 @@
 from collections import Counter
 
+import numpy as np
 import pysam
 from cyvcf2 import VCF, Writer, Variant
 import os
@@ -8,7 +9,9 @@ import datetime
 import json
 import asyncio
 import time
-from vafator.power import PowerCalculator
+
+from vafator.rank_sum_test import calculate_rank_sum_test, get_rank_sum_tests
+from vafator.power import PowerCalculator, DEFAULT_ERROR_RATE, DEFAULT_FPR
 from vafator.pileups import get_variant_pileup, get_metrics
 
 
@@ -38,8 +41,8 @@ class Annotator(object):
                  base_call_qual_thr=29,
                  tumor_ploidies: dict = {},
                  normal_ploidy=2,
-                 fpr=None,
-                 error_rate=None):
+                 fpr=DEFAULT_FPR,
+                 error_rate=DEFAULT_ERROR_RATE):
 
         self.mapping_quality_threshold = mapping_qual_thr
         self.base_call_quality_threshold = base_call_qual_thr
@@ -143,6 +146,54 @@ class Annotator(object):
                 'Type': 'Float',
                 'Number': 'R'
             })
+            headers.append({
+                'ID': "{}_rsmq".format(s),
+                'Description': "Rank sum test comparing the MQ distributions supporting the reference and the "
+                               "alternate in the {} sample/s. Identical distributions will have a value of 0, larger "
+                               "values away from 0 indicate different distributions.".format(s),
+                'Type': 'Float',
+                'Number': 'A'
+            })
+            headers.append({
+                'ID': "{}_rsmq_pv".format(s),
+                'Description': "Rank sum test comparing the mapping quality distributions between alternate "
+                               "and reference p-value in the {} sample/s. , The null hypothesis is that there is no "
+                               "difference between the distributions".format(s),
+                'Type': 'Float',
+                'Number': 'A'
+            })
+            headers.append({
+                'ID': "{}_rsbq".format(s),
+                'Description': "Rank sum test comparing the base call qualities distributions supporting the reference "
+                               "and the alternate in the {} sample/s. Identical distributions will have a value of 0, "
+                               "larger values away from 0 indicate different distributions.".format(s),
+                'Type': 'Float',
+                'Number': 'A'
+            })
+            headers.append({
+                'ID': "{}_rsbq_pv".format(s),
+                'Description': "Rank sum test comparing the base call qualities distributions between alternate "
+                               "and reference p-value in the {} sample/s. , The null hypothesis is that there is no "
+                               "difference between the distributions".format(s),
+                'Type': 'Float',
+                'Number': 'A'
+            })
+            headers.append({
+                'ID': "{}_rspos".format(s),
+                'Description': "Rank sum test comparing the relative position distributions supporting the reference "
+                               "and the alternate in the {} sample/s. Identical distributions will have a value of 0, "
+                               "larger values away from 0 indicate different distributions.".format(s),
+                'Type': 'Float',
+                'Number': 'A'
+            })
+            headers.append({
+                'ID': "{}_rspos_pv".format(s),
+                'Description': "Rank sum test comparing the relative position distributions between alternate "
+                               "and reference p-value in the {} sample/s. , The null hypothesis is that there is no "
+                               "difference between the distributions".format(s),
+                'Type': 'Float',
+                'Number': 'A'
+            })
 
             if len(bams) > 1:
                 for i, bam in enumerate(bams, start=1):
@@ -177,14 +228,41 @@ class Annotator(object):
                          'Description': "Median base call quality of the reads supporting each allele in "
                                         "the {} sample {}".format(s, n),
                          'Type': 'Integer', 'Number': 'R'},
+                        {'ID': "{}_rsbq_{}".format(s, i),
+                         'Description': "Rank sum test comparing the base call qualities distributions supporting the "
+                                        "reference and the alternate in the {} sample {}".format(s, n),
+                         'Type': 'Integer', 'Number': 'A'},
+                        {'ID': "{}_rsbq_pv_{}".format(s, i),
+                         'Description': "Significance for the rank sum test comparing the base call qualities "
+                                        "distributions supporting the reference and the alternate "
+                                        "in the {} sample {}".format(s, n),
+                         'Type': 'Integer', 'Number': 'A'},
                         {'ID': "{}_mq_{}".format(s, i),
                          'Description': "Median mapping quality of the reads supporting each allele in "
                                         "the {} sample {}".format(s, n),
                          'Type': 'Integer', 'Number': 'R'},
+                        {'ID': "{}_rsmq_{}".format(s, i),
+                         'Description': "Rank sum test comparing the mapping qualities distributions supporting the "
+                                        "reference and the alternate in the {} sample {}".format(s, n),
+                         'Type': 'Integer', 'Number': 'A'},
+                        {'ID': "{}_rsmq_pv_{}".format(s, i),
+                         'Description': "Significance for the rank sum test comparing the mapping qualities "
+                                        "distributions supporting the reference and the alternate "
+                                        "in the {} sample {}".format(s, n),
+                         'Type': 'Integer', 'Number': 'A'},
                         {'ID': "{}_pos_{}".format(s, i),
                          'Description': "Median position within the read of the reads supporting each allele in "
                                         "the {} sample {}".format(s, n),
                          'Type': 'Integer', 'Number': 'R'},
+                        {'ID': "{}_posmq_{}".format(s, i),
+                         'Description': "Rank sum test comparing the position distributions supporting the "
+                                        "reference and the alternate in the {} sample {}".format(s, n),
+                         'Type': 'Integer', 'Number': 'A'},
+                        {'ID': "{}_posmq_pv_{}".format(s, i),
+                         'Description': "Significance for the rank sum test comparing the position "
+                                        "distributions supporting the reference and the alternate "
+                                        "in the {} sample {}".format(s, n),
+                         'Type': 'Integer', 'Number': 'A'},
                     ]
         return headers
 
@@ -200,6 +278,9 @@ class Annotator(object):
             global_bq = Counter()
             global_mq = Counter()
             global_pos = Counter()
+            global_all_mqs = {}
+            global_all_bqs = {}
+            global_all_positions = {}
             for i, bam in enumerate(bams):
                 pileups = get_variant_pileup(
                     variant=variant, bam=bam,
@@ -229,17 +310,36 @@ class Annotator(object):
                         variant.INFO["{}_pos_{}".format(sample, i + 1)] = ",".join(
                             [str(coverage_metrics.positions[variant.REF])] +
                             [str(coverage_metrics.positions[alt]) for alt in variant.ALT])
+
+                        pvalues, stats = get_rank_sum_tests(coverage_metrics.all_mqs, variant)
+                        if stats:
+                            variant.INFO["{}_rsmq_{}".format(sample, i + 1)] = ",".join(stats)
+                            variant.INFO["{}_rsmq_pv_{}".format(sample, i + 1)] = ",".join(pvalues)
+
+                        pvalues, stats = get_rank_sum_tests(coverage_metrics.all_bqs, variant)
+                        if stats:
+                            variant.INFO["{}_rsbq_{}".format(sample, i + 1)] = ",".join(stats)
+                            variant.INFO["{}_rsbq_pv_{}".format(sample, i + 1)] = ",".join(stats)
+
+                        pvalues, stats = get_rank_sum_tests(coverage_metrics.all_positions, variant)
+                        if stats:
+                            variant.INFO["{}_rspos_{}".format(sample, i + 1)] = ",".join(stats)
+                            variant.INFO["{}_rspos_pv_{}".format(sample, i + 1)] = ",".join(stats)
+
                     global_ac.update(coverage_metrics.ac)
                     global_bq.update(coverage_metrics.bqs)
                     global_mq.update(coverage_metrics.mqs)
                     global_pos.update(coverage_metrics.positions)
+                    global_all_mqs.update(coverage_metrics.all_mqs)
+                    global_all_bqs.update(coverage_metrics.all_bqs)
+                    global_all_positions.update(coverage_metrics.all_positions)
                     global_dp += coverage_metrics.dp
 
             variant.INFO["{}_af".format(sample)] = ",".join([str(self._calculate_af(global_ac[alt], global_dp)) for alt in variant.ALT])
             variant.INFO["{}_ac".format(sample)] = ",".join([str(global_ac[alt]) for alt in variant.ALT])
             variant.INFO["{}_dp".format(sample)] = global_dp
             variant.INFO["{}_eaf".format(sample)] = str(self.power.calculate_expected_vaf(
-                sample=pysam, variant=variant))
+                sample=sample, variant=variant))
             variant.INFO["{}_pu".format(sample)] = ",".join(
                 [str(self.power.calculate_power(ac=global_ac[alt], dp=global_dp, sample=sample, variant=variant))
                  for alt in variant.ALT])
@@ -253,6 +353,21 @@ class Annotator(object):
                 [str(global_mq[variant.REF])] + [str(global_mq[alt]) for alt in variant.ALT])
             variant.INFO["{}_pos".format(sample)] = ",".join(
                 [str(global_pos[variant.REF])] + [str(global_pos[alt]) for alt in variant.ALT])
+
+            pvalues, stats = get_rank_sum_tests(global_all_mqs, variant)
+            if stats:
+                variant.INFO["{}_rsmq".format(sample)] = ",".join(stats)
+                variant.INFO["{}_rsmq_pv".format(sample)] = ",".join(pvalues)
+
+            pvalues, stats = get_rank_sum_tests(global_all_bqs, variant)
+            if stats:
+                variant.INFO["{}_rsbq".format(sample)] = ",".join(stats)
+                variant.INFO["{}_rsbq_pv".format(sample)] = ",".join(pvalues)
+
+            pvalues, stats = get_rank_sum_tests(global_all_positions, variant)
+            if stats:
+                variant.INFO["{}_rspos".format(sample)] = ",".join(stats)
+                variant.INFO["{}_rspos_pv".format(sample)] = ",".join(pvalues)
 
     def _calculate_af(self, ac, dp):
         return round(float(ac) / dp, 5) if dp > 0 else 0.0

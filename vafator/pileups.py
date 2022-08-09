@@ -38,6 +38,9 @@ class CoverageMetrics:
     bqs: dict = None
     mqs: dict = None
     positions: dict = None
+    all_bqs: dict = None
+    all_mqs: dict = None
+    all_positions: dict = None
 
 
 def get_metrics(variant: Variant, pileups: IteratorColumnRegion) -> CoverageMetrics:
@@ -91,10 +94,15 @@ def get_insertion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> Co
     except StopIteration:
         # no reads
         pass
-    return CoverageMetrics(ac=Counter(ac), dp=dp,
-                           mqs=Counter({k: np.median(l) for k, l in mq.items()}),
-                           positions=Counter({k: np.median(l) for k, l in pos.items()}),
-                           bqs=Counter())
+    return CoverageMetrics(
+        ac=Counter(ac), dp=dp,
+        mqs=Counter({k: np.median(l) for k, l in mq.items()}),
+        positions=Counter({k: np.median(l) for k, l in pos.items()}),
+        bqs=Counter(),
+        all_mqs={k: l for k, l in mq.items()},
+        all_positions={k: l for k, l in pos.items()},
+        all_bqs=Counter()
+    )
 
 
 def get_deletion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> CoverageMetrics:
@@ -133,10 +141,15 @@ def get_deletion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> Cov
     except StopIteration:
         # no reads
         pass
-    return CoverageMetrics(ac=Counter(ac), dp=dp,
-                           mqs=Counter({k: np.median(l) for k, l in mq.items()}),
-                           positions=Counter({k: np.median(l) for k, l in pos.items()}),
-                           bqs=Counter())
+    return CoverageMetrics(
+        ac=Counter(ac), dp=dp,
+        mqs=Counter({k: np.median(l) for k, l in mq.items()}),
+        positions=Counter({k: np.median(l) for k, l in pos.items()}),
+        bqs=Counter(),
+        all_mqs={k: l for k, l in mq.items()},
+        all_positions={k: l for k, l in pos.items()},
+        all_bqs=Counter()
+    )
 
 
 def get_snv_metrics(pileups: IteratorColumnRegion) -> CoverageMetrics:
@@ -147,6 +160,9 @@ def get_snv_metrics(pileups: IteratorColumnRegion) -> CoverageMetrics:
         bqs = aggregate_median_per_base(bases, pileup.get_query_qualities())
         mqs = aggregate_median_per_base(bases, pileup.get_mapping_qualities())
         positions = aggregate_median_per_base(bases, pileup.get_query_positions())
+        all_bqs = aggregate_list_per_base(bases, pileup.get_query_qualities())
+        all_mqs = aggregate_list_per_base(bases, pileup.get_mapping_qualities())
+        all_positions = aggregate_list_per_base(bases, pileup.get_query_positions())
 
         dp = len(bases)
         ac = Counter(bases)
@@ -157,14 +173,35 @@ def get_snv_metrics(pileups: IteratorColumnRegion) -> CoverageMetrics:
         bqs = Counter()
         mqs = Counter()
         positions = Counter()
+        all_bqs = {}
+        all_mqs = {}
+        all_positions = {}
 
-    return CoverageMetrics(ac=ac, dp=dp, bqs=bqs, mqs=mqs, positions=positions)
+    return CoverageMetrics(
+        ac=ac,
+        dp=dp,
+        bqs=bqs,
+        mqs=mqs,
+        positions=positions,
+        all_bqs=all_bqs,
+        all_mqs=all_mqs,
+        all_positions=all_positions
+    )
 
 
 def aggregate_median_per_base(bases, values) -> Counter:
-    bqs = {}
-    for b, bq in zip(bases, values):
-        if b not in bqs:
-            bqs[b] = []
-        bqs[b].append(bq)
-    return Counter({b: np.median(bq_list) for b, bq_list in bqs.items()})
+    aggregated_values = {}
+    for b, v in zip(bases, values):
+        if b not in aggregated_values:
+            aggregated_values[b] = []
+        aggregated_values[b].append(v)
+    return Counter({b: np.median(bq_list) for b, bq_list in aggregated_values.items()})
+
+
+def aggregate_list_per_base(bases, values) -> dict:
+    aggregated_values = {}
+    for b, v in zip(bases, values):
+        if b not in aggregated_values:
+            aggregated_values[b] = []
+        aggregated_values[b].append(v)
+    return aggregated_values
