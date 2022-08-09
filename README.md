@@ -7,9 +7,14 @@
 [![License](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
 
 
-VAFator annotates the variants in a VCF file with technical annotations from multiple BAM files. 
-Supports annotating somatic variant calls with the annotations from the normal and the tumor samples; although
-it can also be used for germline variant calls.
+VAFator annotates the variants in a VCF file with technical annotations extracted from one or more BAM alignment files. 
+We implement a set of basic coverage annotations and also more sophisticated published annotations used to assess the 
+quality of every variant call.
+Any arbitrary number of BAM files from different samples and/or technical replicates can be provided.
+The aim of VAFator is to provide these technical annotations with independence of the variant caller and maintaining
+a flexible read filtering. 
+This allows to scrutinize the results of variant calling in a wide set of use cases, eg: benchmark of variant callers, 
+somatic variant calling, tumor evolution with multiple samples at different time points, comparison of replicates.
 
 | Annotation                              | Description                                                                                                                                                                                             | INFO field        | Type  | Cardinality (§) |
 |-----------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|-------|-----------------|
