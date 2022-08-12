@@ -227,42 +227,42 @@ class Annotator(object):
                         {'ID': "{}_bq_{}".format(s, i),
                          'Description': "Median base call quality of the reads supporting each allele in "
                                         "the {} sample {}".format(s, n),
-                         'Type': 'Integer', 'Number': 'R'},
+                         'Type': 'Float', 'Number': 'R'},
                         {'ID': "{}_rsbq_{}".format(s, i),
                          'Description': "Rank sum test comparing the base call qualities distributions supporting the "
                                         "reference and the alternate in the {} sample {}".format(s, n),
-                         'Type': 'Integer', 'Number': 'A'},
+                         'Type': 'Float', 'Number': 'A'},
                         {'ID': "{}_rsbq_pv_{}".format(s, i),
                          'Description': "Significance for the rank sum test comparing the base call qualities "
                                         "distributions supporting the reference and the alternate "
                                         "in the {} sample {}".format(s, n),
-                         'Type': 'Integer', 'Number': 'A'},
+                         'Type': 'Float', 'Number': 'A'},
                         {'ID': "{}_mq_{}".format(s, i),
                          'Description': "Median mapping quality of the reads supporting each allele in "
                                         "the {} sample {}".format(s, n),
-                         'Type': 'Integer', 'Number': 'R'},
+                         'Type': 'Float', 'Number': 'R'},
                         {'ID': "{}_rsmq_{}".format(s, i),
                          'Description': "Rank sum test comparing the mapping qualities distributions supporting the "
                                         "reference and the alternate in the {} sample {}".format(s, n),
-                         'Type': 'Integer', 'Number': 'A'},
+                         'Type': 'Float', 'Number': 'A'},
                         {'ID': "{}_rsmq_pv_{}".format(s, i),
                          'Description': "Significance for the rank sum test comparing the mapping qualities "
                                         "distributions supporting the reference and the alternate "
                                         "in the {} sample {}".format(s, n),
-                         'Type': 'Integer', 'Number': 'A'},
+                         'Type': 'Float', 'Number': 'A'},
                         {'ID': "{}_pos_{}".format(s, i),
                          'Description': "Median position within the read of the reads supporting each allele in "
                                         "the {} sample {}".format(s, n),
-                         'Type': 'Integer', 'Number': 'R'},
-                        {'ID': "{}_posmq_{}".format(s, i),
+                         'Type': 'Float', 'Number': 'R'},
+                        {'ID': "{}_rspos_{}".format(s, i),
                          'Description': "Rank sum test comparing the position distributions supporting the "
                                         "reference and the alternate in the {} sample {}".format(s, n),
-                         'Type': 'Integer', 'Number': 'A'},
-                        {'ID': "{}_posmq_pv_{}".format(s, i),
+                         'Type': 'Float', 'Number': 'A'},
+                        {'ID': "{}_rspos_pv_{}".format(s, i),
                          'Description': "Significance for the rank sum test comparing the position "
                                         "distributions supporting the reference and the alternate "
                                         "in the {} sample {}".format(s, n),
-                         'Type': 'Integer', 'Number': 'A'},
+                         'Type': 'Float', 'Number': 'A'},
                     ]
         return headers
 
