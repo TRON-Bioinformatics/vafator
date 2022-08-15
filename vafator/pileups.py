@@ -85,11 +85,11 @@ def get_insertion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> Co
                             # the read contains the insertion
                             ac[alt_upper] = ac[alt_upper] + 1
                             mq[alt_upper].append(pileup_read.alignment.mapping_quality)
-                            pos[alt_upper].append(pileup_read.query_position)
+                            pos[alt_upper].append(pileup_read.query_position_or_next)
             elif pileup_read.indel == 0:
                 # NOTE: considers all reads without indels to be the reference!
                 mq[variant.REF].append(pileup_read.alignment.mapping_quality)
-                pos[variant.REF].append(pileup_read.query_position)
+                pos[variant.REF].append(pileup_read.query_position_or_next)
 
     except StopIteration:
         # no reads
@@ -122,6 +122,7 @@ def get_deletion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> Cov
             if pileup_read.indel < 0:
                 # read with a deletion
                 start = pileup_read.alignment.reference_start
+                match = False
                 for cigar_type, cigar_length in pileup_read.alignment.cigartuples:
                     if cigar_type in [0, 3, 7, 8]:  # consumes reference M, N, =, X
                         start += cigar_length
@@ -129,15 +130,20 @@ def get_deletion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> Cov
                         if start == variant_position and cigar_length == deletion_length:
                             ac[alt_upper] = ac[alt_upper] + 1
                             mq[alt_upper].append(pileup_read.alignment.mapping_quality)
-                            pos[alt_upper].append(pileup_read.query_position)
+                            pos[alt_upper].append(pileup_read.query_position_or_next)
+                            match = True
+                            break
                         else:
                             start += cigar_length
                     if start > variant_position:
                         break
+                if not match:
+                    # TODO: when finds a read with an indel not matching our particular indel it counts it
+                    pass
             elif pileup_read.indel == 0:
                 # NOTE: considers all reads without indels to be the reference!
                 mq[variant.REF].append(pileup_read.alignment.mapping_quality)
-                pos[variant.REF].append(pileup_read.query_position)
+                pos[variant.REF].append(pileup_read.query_position_or_next)
     except StopIteration:
         # no reads
         pass
