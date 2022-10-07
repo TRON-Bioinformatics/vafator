@@ -3,7 +3,7 @@ import pkg_resources
 from unittest import TestCase
 from cyvcf2 import VCF
 
-from ploidies import PloidyManager
+from vafator.ploidies import PloidyManager
 from vafator.annotator import Annotator
 import vafator.tests.utils as test_utils
 import time

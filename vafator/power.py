@@ -46,7 +46,7 @@ class PowerCalculator:
         In a scenario with purity = 1, tumor CN = 2 and normal CN = 2 => expected VAF = 0.5
         """
         purity = self.purities.get(sample, DEFAULT_PURITY)
-        tumor_ploidy = self.tumor_ploidies.get(sample, default_ploidy_manager).get_ploidy(variant=variant)
+        tumor_ploidy = max(1, self.tumor_ploidies.get(sample, default_ploidy_manager).get_ploidy(variant=variant))
         corrected_tumor_ploidy = purity * tumor_ploidy + ((1 - purity) * self.normal_ploidy)
         expected_vaf = purity / corrected_tumor_ploidy
         return expected_vaf

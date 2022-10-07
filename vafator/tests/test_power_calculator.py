@@ -1,11 +1,9 @@
 from unittest import TestCase
-
-import numpy as np
 import pkg_resources
 
-from ploidies import PloidyManager
-from power import PowerCalculator
-from tests.utils import VafatorVariant
+from vafator.ploidies import PloidyManager
+from vafator.power import PowerCalculator
+from vafator.tests.utils import VafatorVariant
 
 
 class PowerCalculatorTest(TestCase):
@@ -25,6 +23,11 @@ class PowerCalculatorTest(TestCase):
         self.assertAlmostEqual(power.calculate_power(dp=10, ac=9, sample='tumor', variant=None), 0.9999830649121916, 5)
         self.assertAlmostEqual(power.calculate_power(dp=10, ac=10, sample='tumor', variant=None), 1.0)
         self.assertAlmostEqual(power.calculate_power(dp=10, ac=11, sample='tumor', variant=None), 1.0)
+
+    def test_eaf_copy_number_below_one(self):
+        power = PowerCalculator(
+            tumor_ploidies={'tumor': PloidyManager(genome_wide_ploidy=0.5)}, purities={'tumor': 0.9})
+        self.assertLessEqual(power.calculate_expected_vaf(sample='tumor', variant=None), 1.0)
 
     def test_varying_purity(self):
         power1 = PowerCalculator(

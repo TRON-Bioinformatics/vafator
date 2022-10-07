@@ -1,5 +1,4 @@
 from unittest import TestCase
-
 from vafator.rank_sum_test import calculate_rank_sum_test
 
 
