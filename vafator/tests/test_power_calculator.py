@@ -26,6 +26,11 @@ class PowerCalculatorTest(TestCase):
         self.assertAlmostEqual(power.calculate_power(dp=10, ac=10, sample='tumor', variant=None), 1.0)
         self.assertAlmostEqual(power.calculate_power(dp=10, ac=11, sample='tumor', variant=None), 1.0)
 
+    def test_eaf_copy_number_below_one(self):
+        power = PowerCalculator(
+            tumor_ploidies={'tumor': PloidyManager(genome_wide_ploidy=0.5)}, purities={'tumor': 0.9})
+        self.assertLessEqual(power.calculate_expected_vaf(sample='tumor', variant=None), 1.0)
+
     def test_varying_purity(self):
         power1 = PowerCalculator(
             tumor_ploidies={'tumor': PloidyManager(genome_wide_ploidy=2.5)}, purities={'tumor': 0.8})
