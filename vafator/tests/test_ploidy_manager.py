@@ -2,7 +2,7 @@ from unittest import TestCase
 
 import pkg_resources
 
-from tests.utils import VafatorVariant
+from vafator.tests.utils import VafatorVariant
 from vafator.ploidies import PloidyManager, default_ploidy_manager
 
 

@@ -3,7 +3,7 @@ from unittest import TestCase
 import pkg_resources
 import pysam
 
-from tests.utils import VafatorVariant
+from vafator.tests.utils import VafatorVariant
 from vafator.pileups import get_variant_pileup, get_metrics
 
 

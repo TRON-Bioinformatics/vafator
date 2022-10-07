@@ -1,11 +1,9 @@
 from unittest import TestCase
-
-import numpy as np
 import pkg_resources
 
-from ploidies import PloidyManager
-from power import PowerCalculator
-from tests.utils import VafatorVariant
+from vafator.ploidies import PloidyManager
+from vafator.power import PowerCalculator
+from vafator.tests.utils import VafatorVariant
 
 
 class PowerCalculatorTest(TestCase):
