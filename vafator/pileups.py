@@ -33,13 +33,21 @@ def get_variant_pileup(
 
 @dataclass
 class CoverageMetrics:
+    # number supporting reads of each base, including the reference
     ac: dict
+    # total depth of coverage
     dp: int
+    # median base call quality of each base, including the reference
     bqs: dict = None
+    # median mapping quality of each alternate base, including the reference
     mqs: dict = None
+    # median position within the read of each alternate base, including the reference
     positions: dict = None
+    # base call quality distribution of each base, including the reference
     all_bqs: dict = None
+    # mapping quality distribution of each base, including the reference
     all_mqs: dict = None
+    # position within the read distribution of each base, including the reference
     all_positions: dict = None
 
 

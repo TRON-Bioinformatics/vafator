@@ -10,6 +10,18 @@ import time
 from logzero import logger
 
 
+EXPECTED_ANNOTATIONS = [
+    'af', 'dp', 'ac', 'n', 'pu', 'pw', 'k', 'eaf', 'bq', 'mq', 'pos', 'rsmq', 'rsmq_pv', 'rsbq', 'rsbq_pv', 'rspos',
+    'rspos_pv'
+]
+
+# replicates do not have EAF annotation
+EXPECTED_ANNOTATIONS_REPLICATES = [
+    'af', 'dp', 'ac', 'n', 'pu', 'pw', 'k', 'bq', 'mq', 'pos', 'rsmq', 'rsmq_pv', 'rsbq', 'rsbq_pv', 'rspos',
+    'rspos_pv'
+]
+
+
 class TestAnnotator(TestCase):
 
     def test_annotator(self):
@@ -27,12 +39,9 @@ class TestAnnotator(TestCase):
         self.assertTrue(n_variants_input == n_variants_output)
 
         info_annotations = test_utils._get_info_fields(output_vcf)
-        self.assertTrue("tumor_af" in info_annotations)
-        self.assertTrue("normal_af" in info_annotations)
-        self.assertTrue("tumor_ac" in info_annotations)
-        self.assertTrue("normal_ac" in info_annotations)
-        self.assertTrue("tumor_dp" in info_annotations)
-        self.assertTrue("normal_dp" in info_annotations)
+        for a in EXPECTED_ANNOTATIONS:
+            self.assertTrue("tumor_{}".format(a) in info_annotations)
+            self.assertTrue("normal_{}".format(a) in info_annotations)
 
     def test_annotator_with_multiple_bams(self):
         input_file = pkg_resources.resource_filename(__name__, "resources/test1.vcf")
@@ -49,18 +58,11 @@ class TestAnnotator(TestCase):
         self.assertTrue(n_variants_input == n_variants_output)
 
         info_annotations = test_utils._get_info_fields(output_vcf)
-        self.assertTrue("tumor_af_1" in info_annotations)
-        self.assertTrue("normal_af_1" in info_annotations)
-        self.assertTrue("tumor_ac_1" in info_annotations)
-        self.assertTrue("normal_ac_1" in info_annotations)
-        self.assertTrue("tumor_dp_1" in info_annotations)
-        self.assertTrue("normal_dp_1" in info_annotations)
-        self.assertTrue("tumor_af_2" in info_annotations)
-        self.assertTrue("normal_af_2" in info_annotations)
-        self.assertTrue("tumor_ac_2" in info_annotations)
-        self.assertTrue("normal_ac_2" in info_annotations)
-        self.assertTrue("tumor_dp_2" in info_annotations)
-        self.assertTrue("normal_dp_2" in info_annotations)
+        for a in EXPECTED_ANNOTATIONS_REPLICATES:
+            self.assertTrue("tumor_{}_1".format(a) in info_annotations,
+                            "Missing annotation tumor_{}_1".format(a))
+            self.assertTrue("normal_{}_1".format(a) in info_annotations,
+                            "Missing annotation normal_{}_1".format(a))
 
     def test_annotator_with_prefix(self):
         input_file = pkg_resources.resource_filename(__name__, "resources/test1.vcf")
@@ -78,18 +80,11 @@ class TestAnnotator(TestCase):
         self.assertTrue(n_variants_input == n_variants_output)
 
         info_annotations = test_utils._get_info_fields(output_vcf)
-        self.assertTrue("RNA_tumor_af_1" in info_annotations)
-        self.assertTrue("RNA_normal_af_1" in info_annotations)
-        self.assertTrue("RNA_tumor_ac_1" in info_annotations)
-        self.assertTrue("RNA_normal_ac_1" in info_annotations)
-        self.assertTrue("RNA_tumor_dp_1" in info_annotations)
-        self.assertTrue("RNA_normal_dp_1" in info_annotations)
-        self.assertTrue("RNA_tumor_af_2" in info_annotations)
-        self.assertTrue("RNA_normal_af_2" in info_annotations)
-        self.assertTrue("RNA_tumor_ac_2" in info_annotations)
-        self.assertTrue("RNA_normal_ac_2" in info_annotations)
-        self.assertTrue("RNA_tumor_dp_2" in info_annotations)
-        self.assertTrue("RNA_normal_dp_2" in info_annotations)
+        for a in EXPECTED_ANNOTATIONS_REPLICATES:
+            self.assertTrue("RNA_tumor_{}_1".format(a) in info_annotations,
+                            "Missing annotation RNA_tumor_{}_1".format(a))
+            self.assertTrue("RNA_normal_{}_1".format(a) in info_annotations,
+                            "Missing annotation RNA_normal_{}_1".format(a))
 
     def test_annotator_with_mnvs(self):
         input_file = pkg_resources.resource_filename(__name__, "resources/test_tumor_normal.vcf")
@@ -107,18 +102,11 @@ class TestAnnotator(TestCase):
         self.assertTrue(n_variants_input == n_variants_output)
 
         info_annotations = test_utils._get_info_fields(output_vcf)
-        self.assertTrue("RNA_tumor_af_1" in info_annotations)
-        self.assertTrue("RNA_normal_af_1" in info_annotations)
-        self.assertTrue("RNA_tumor_ac_1" in info_annotations)
-        self.assertTrue("RNA_normal_ac_1" in info_annotations)
-        self.assertTrue("RNA_tumor_dp_1" in info_annotations)
-        self.assertTrue("RNA_normal_dp_1" in info_annotations)
-        self.assertTrue("RNA_tumor_af_2" in info_annotations)
-        self.assertTrue("RNA_normal_af_2" in info_annotations)
-        self.assertTrue("RNA_tumor_ac_2" in info_annotations)
-        self.assertTrue("RNA_normal_ac_2" in info_annotations)
-        self.assertTrue("RNA_tumor_dp_2" in info_annotations)
-        self.assertTrue("RNA_normal_dp_2" in info_annotations)
+        for a in EXPECTED_ANNOTATIONS_REPLICATES:
+            self.assertTrue("RNA_tumor_{}_1".format(a) in info_annotations,
+                            "Missing annotation RNA_tumor_{}_1".format(a))
+            self.assertTrue("RNA_normal_{}_1".format(a) in info_annotations,
+                            "Missing annotation RNA_normal_{}_1".format(a))
 
     def _get_info_at(self, input_file, chromosome, position, annotation):
         vcf = VCF(input_file)
@@ -218,7 +206,6 @@ class TestAnnotator(TestCase):
         self.assertEqual(variant.INFO['normal_pos'][0], 95.0)
         self.assertEqual(variant.INFO['normal_pos'][1], 56.0)
 
-
     def test_annotator_bams_order(self):
         input_file = pkg_resources.resource_filename(__name__, "resources/test1.vcf")
         output_vcf = pkg_resources.resource_filename(__name__, "resources/results/test_annotator1_output.vcf")
@@ -236,8 +223,15 @@ class TestAnnotator(TestCase):
         vcf_2 = VCF(output_vcf_2)
 
         for v, v2 in zip(vcf, vcf_2):
-            self.assertEqual(v.INFO["normal_dp"], v2.INFO["normal_dp"])
-            self.assertEqual(v.INFO["tumor_dp"], v2.INFO["tumor_dp"])
+            for a in EXPECTED_ANNOTATIONS:
+                self.assertEqual(
+                    v.INFO.get("normal_{}".format(a), ""),
+                    v2.INFO.get("normal_{}".format(a), ""),
+                    "Variant {}:{}:{}>{} is missing annotation normal_{}".format(v.CHROM, v.POS, v.REF, v.ALT[0], a))
+                self.assertEqual(
+                    v.INFO.get("tumor_{}".format(a), ""),
+                    v2.INFO.get("tumor_{}".format(a), ""),
+                    "Variant {}:{}:{}>{} is missing annotation tumor_{}".format(v.CHROM, v.POS, v.REF, v.ALT[0], a))
 
     def test_annotator_with_purities(self):
         input_file = pkg_resources.resource_filename(__name__, "resources/test1.vcf")
@@ -256,22 +250,9 @@ class TestAnnotator(TestCase):
         self.assertTrue(n_variants_input == n_variants_output)
 
         info_annotations = test_utils._get_info_fields(output_vcf)
-        self.assertTrue("tumor_af" in info_annotations)
-        self.assertTrue("normal_af" in info_annotations)
-        self.assertTrue("tumor_ac" in info_annotations)
-        self.assertTrue("normal_ac" in info_annotations)
-        self.assertTrue("tumor_dp" in info_annotations)
-        self.assertTrue("normal_dp" in info_annotations)
-        self.assertTrue("tumor_pu" in info_annotations)
-        self.assertTrue("normal_pu" in info_annotations)
-        self.assertTrue("normal_eaf" in info_annotations)
-        self.assertTrue("tumor_eaf" in info_annotations)
-        self.assertTrue("tumor_pw" in info_annotations)
-        self.assertTrue("normal_pw" in info_annotations)
-        self.assertTrue("tumor_bq" in info_annotations)
-        self.assertTrue("normal_bq" in info_annotations)
-        self.assertTrue("tumor_mq" in info_annotations)
-        self.assertTrue("normal_mq" in info_annotations)
+        for a in EXPECTED_ANNOTATIONS:
+            self.assertTrue("tumor_{}".format(a) in info_annotations)
+            self.assertTrue("normal_{}".format(a) in info_annotations)
 
         annotator = Annotator(
             input_vcf=input_file, output_vcf=output_vcf, input_bams={"normal": [bam1], "tumor": [bam2]},

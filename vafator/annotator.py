@@ -95,6 +95,13 @@ class Annotator(object):
                 'Number': 'A'
             })
             headers.append({
+                'ID': "{}_n".format(s),
+                'Description': "Allele count for ambiguous bases (any IUPAC ambiguity code is counted) "
+                               "in the {} sample/s".format(s),
+                'Type': 'Integer',
+                'Number': '1'
+            })
+            headers.append({
                 'ID': "{}_pu".format(s),
                 'Description': "Probability of an undetected mutation given the observed supporting reads (AC), "
                                "the observed total coverage (DP) and the provided tumor purity in the "
@@ -208,6 +215,10 @@ class Annotator(object):
                         {'ID': "{}_ac_{}".format(s, i),
                          'Description': "Allele count for the alternate alleles in the {} sample {}".format(s, n),
                          'Type': 'Integer', 'Number': 'A'},
+                        {'ID': "{}_n_{}".format(s, i),
+                         'Description': "Allele count for ambiguous bases (any IUPAC ambiguity code is counted) "
+                                        "in the {} sample {}".format(s, n),
+                         'Type': 'Integer', 'Number': '1'},
                         {'ID': "{}_pu_{}".format(s, i),
                          'Description': "Probability of an undetected mutation given the observed supporting "
                                         "reads (AC), the observed total coverage (DP) and the provided tumor "
@@ -289,9 +300,13 @@ class Annotator(object):
                 coverage_metrics = get_metrics(variant=variant, pileups=pileups)
                 if coverage_metrics is not None:
                     if len(bams) > 1:
-                        variant.INFO["{}_af_{}".format(sample, i + 1)] = ",".join(
-                            [str(self._calculate_af(coverage_metrics.ac[alt], coverage_metrics.dp)) for alt in variant.ALT])
-                        variant.INFO["{}_ac_{}".format(sample, i + 1)] = ",".join([str(coverage_metrics.ac[alt]) for alt in variant.ALT])
+                        variant.INFO["{}_af_{}".format(sample, i + 1)] = \
+                            ",".join([str(self._calculate_af(coverage_metrics.ac[alt], coverage_metrics.dp))
+                                      for alt in variant.ALT])
+                        variant.INFO["{}_ac_{}".format(sample, i + 1)] = \
+                            ",".join([str(coverage_metrics.ac[alt]) for alt in variant.ALT])
+                        variant.INFO["{}_n_{}".format(sample, i + 1)] = \
+                            str(sum([coverage_metrics.ac.get(n, 0) for n in vafator.AMBIGUOUS_BASES]))
                         variant.INFO["{}_dp_{}".format(sample, i + 1)] = coverage_metrics.dp
                         variant.INFO["{}_pu_{}".format(sample, i + 1)] = ",".join(
                             [str(self.power.calculate_power(
@@ -337,6 +352,7 @@ class Annotator(object):
 
             variant.INFO["{}_af".format(sample)] = ",".join([str(self._calculate_af(global_ac[alt], global_dp)) for alt in variant.ALT])
             variant.INFO["{}_ac".format(sample)] = ",".join([str(global_ac[alt]) for alt in variant.ALT])
+            variant.INFO["{}_n".format(sample)] = str(sum([global_ac.get(n, 0) for n in vafator.AMBIGUOUS_BASES]))
             variant.INFO["{}_dp".format(sample)] = global_dp
             variant.INFO["{}_eaf".format(sample)] = str(self.power.calculate_expected_vaf(
                 sample=sample, variant=variant))
@@ -354,6 +370,8 @@ class Annotator(object):
             variant.INFO["{}_pos".format(sample)] = ",".join(
                 [str(global_pos[variant.REF])] + [str(global_pos[alt]) for alt in variant.ALT])
 
+            # for these rank sum tests it is required at least one value for the alternate and one value for the
+            # reference otherwise it cannot be calculated
             pvalues, stats = get_rank_sum_tests(global_all_mqs, variant)
             if stats:
                 variant.INFO["{}_rsmq".format(sample)] = ",".join(stats)
