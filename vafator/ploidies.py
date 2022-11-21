@@ -15,6 +15,7 @@ class PloidyManager:
         if local_copy_numbers is not None and not os.path.exists(local_copy_numbers):
             raise ValueError('The provided tumor ploidy is neither a copy number value or a BED file with copy '
                              'numbers')
+        self.report_value = local_copy_numbers if local_copy_numbers else genome_wide_ploidy
         self.bed = pd.read_csv(local_copy_numbers, sep='\t', names=['chromosome', 'start', 'end', 'copy_number']) \
             if local_copy_numbers is not None else None
         self.ploidy = genome_wide_ploidy

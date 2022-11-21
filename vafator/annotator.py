@@ -10,6 +10,7 @@ import json
 import asyncio
 import time
 
+from vafator.ploidies import DEFAULT_PLOIDY
 from vafator.rank_sum_test import calculate_rank_sum_test, get_rank_sum_tests
 from vafator.power import PowerCalculator, DEFAULT_ERROR_RATE, DEFAULT_FPR
 from vafator.pileups import get_variant_pileup, get_metrics
@@ -65,7 +66,9 @@ class Annotator(object):
         self.vafator_header["base_call_quality_threshold"] = base_call_qual_thr
         self.vafator_header["purities"] = ";".join(["{}:{}".format(s, p) for s, p in purities.items()])
         self.vafator_header["normal_ploidy"] = normal_ploidy
-        self.vafator_header["tumor_ploidy"] = ";".join(["{}:{}".format(s, p) for s, p in tumor_ploidies.items()])
+        self.vafator_header["tumor_ploidy"] = ";".join(["{}:{}".format(s, p.report_value)
+                                                        for s, p in tumor_ploidies.items()]) \
+            if tumor_ploidies else DEFAULT_PLOIDY
         self.vafator_header["exclude_ambiguous_bases"] = self.exclude_ambiguous_bases
         self.vcf.add_to_header("##vafator_command_line={}".format(json.dumps(self.vafator_header)))
         # adds to the header all the names of the annotations
