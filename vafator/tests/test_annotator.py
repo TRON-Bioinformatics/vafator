@@ -1,4 +1,6 @@
 import os
+
+import numpy as np
 import pkg_resources
 from unittest import TestCase
 from cyvcf2 import VCF
@@ -132,7 +134,8 @@ class TestAnnotator(TestCase):
         duration = time.time() - start
         logger.info("Duration {} seconds".format(round(duration, 3)))
 
-        self.assertTrue(os.path.exists(output_vcf))
+        self._assert_vafator_vcf(output_vcf, sample_name='normal')
+
         n_variants_input = test_utils._get_count_variants(input_file)
         n_variants_output = test_utils._get_count_variants(output_vcf)
         self.assertTrue(n_variants_input == n_variants_output)
@@ -206,6 +209,24 @@ class TestAnnotator(TestCase):
         self.assertEqual(variant.INFO['normal_pos'][0], 95.0)
         self.assertEqual(variant.INFO['normal_pos'][1], 56.0)
 
+    def test_nist_with_replicates(self):
+        input_file = pkg_resources.resource_filename(
+            __name__, "resources/project.NIST.hc.snps.indels.chr1_1000000_2000000.vcf")
+        output_vcf = pkg_resources.resource_filename(
+            __name__, "resources/results/project.NIST.hc.snps.indels.chr1_1000000_2000000.vaf_replicates.vcf")
+        bam_file = pkg_resources.resource_filename(
+            __name__,
+            "resources/project.NIST_NIST7035_H7AP8ADXX_TAAGGCGA_1_NA12878.bwa.markDuplicates.chr1_1000000_2000000.bam")
+        start = time.time()
+        annotator = Annotator(input_vcf=input_file, output_vcf=output_vcf, input_bams={"normal": [bam_file]})
+        annotator.run()
+        duration = time.time() - start
+        logger.info("Duration {} seconds".format(round(duration, 3)))
+
+        self._assert_vafator_vcf(output_vcf, sample_name='normal')
+        self._assert_vafator_vcf(output_vcf, sample_name='normal', replicate=1)
+        self._assert_vafator_vcf(output_vcf, sample_name='normal', replicate=2)
+
     def test_annotator_bams_order(self):
         input_file = pkg_resources.resource_filename(__name__, "resources/test1.vcf")
         output_vcf = pkg_resources.resource_filename(__name__, "resources/results/test_annotator1_output.vcf")
@@ -218,6 +239,11 @@ class TestAnnotator(TestCase):
 
         self.assertTrue(os.path.exists(output_vcf))
         self.assertTrue(os.path.exists(output_vcf_2))
+
+        self._assert_vafator_vcf(output_vcf, sample_name='normal')
+        self._assert_vafator_vcf(output_vcf, sample_name='tumor')
+        self._assert_vafator_vcf(output_vcf_2, sample_name='normal')
+        self._assert_vafator_vcf(output_vcf_2, sample_name='tumor')
 
         vcf = VCF(output_vcf)
         vcf_2 = VCF(output_vcf_2)
@@ -259,3 +285,42 @@ class TestAnnotator(TestCase):
             purities={"tumor": 0.2}, tumor_ploidies={"tumor": PloidyManager(genome_wide_ploidy=1.5)}
         )
         annotator.run()
+
+    def _assert_vafator_vcf(self, vcf_filename, sample_name, replicate=None):
+        self.assertTrue(os.path.exists(vcf_filename))
+        vcf = VCF(vcf_filename)
+        for v in vcf:
+            # p-values or VAFs
+            self._assert_probability(v.INFO.get(self._get_annotation_name('rsbq_pv', sample_name, replicate=replicate), 0))
+            self._assert_probability(v.INFO.get(self._get_annotation_name('rsmq_pv', sample_name, replicate=replicate), 0))
+            self._assert_probability(v.INFO.get(self._get_annotation_name('rspos_pv', sample_name, replicate=replicate), 0))
+            self._assert_probability(v.INFO.get(self._get_annotation_name('eaf', sample_name, replicate=replicate), 0))
+            self._assert_probability(v.INFO.get(self._get_annotation_name('af', sample_name, replicate=replicate), 0))
+
+            # positive integer annotations
+            self._assert_positive_integer(v.INFO.get(self._get_annotation_name('ac', sample_name, replicate=replicate), 0))
+            self._assert_positive_integer(v.INFO.get(self._get_annotation_name('dp', sample_name, replicate=replicate), 0))
+            self._assert_positive_integer(v.INFO.get(self._get_annotation_name('mq', sample_name, replicate=replicate), 0))
+            self._assert_positive_integer(v.INFO.get(self._get_annotation_name('bq', sample_name, replicate=replicate), 0))
+            self._assert_positive_integer(v.INFO.get(self._get_annotation_name('pos', sample_name, replicate=replicate), 0))
+        vcf.close()
+
+    def _get_annotation_name(self, annotation_name, sample_name, replicate=None):
+        annotation_name = "{}_{}".format(sample_name, annotation_name)
+        if replicate:
+            annotation_name = "{}_{}".format(annotation_name, replicate)
+        return annotation_name
+
+    def _assert_probability(self, annotation):
+        if isinstance(annotation, list) or isinstance(annotation, tuple):
+            for a in annotation:
+                self.assertTrue(0.0 <= float(a) <= 1.0, "Expected probability has a value of {}".format(a))
+        else:
+            self.assertTrue(0.0 <= float(annotation) <= 1.0, "Expected probability has a value of {}".format(annotation))
+
+    def _assert_positive_integer(self, annotation):
+        if isinstance(annotation, list) or isinstance(annotation, tuple):
+            for a in annotation:
+                self.assertTrue(np.isnan(a) or 0.0 <= a, "Expected positive integer has a value of {}".format(a))
+        else:
+            self.assertTrue(np.isnan(annotation) or 0.0 <= annotation, "Expected positive integer has a value of {}".format(annotation))

@@ -338,12 +338,12 @@ class Annotator(object):
                         pvalues, stats = get_rank_sum_tests(coverage_metrics.all_bqs, variant)
                         if stats:
                             variant.INFO["{}_rsbq_{}".format(sample, i + 1)] = ",".join(stats)
-                            variant.INFO["{}_rsbq_pv_{}".format(sample, i + 1)] = ",".join(stats)
+                            variant.INFO["{}_rsbq_pv_{}".format(sample, i + 1)] = ",".join(pvalues)
 
                         pvalues, stats = get_rank_sum_tests(coverage_metrics.all_positions, variant)
                         if stats:
                             variant.INFO["{}_rspos_{}".format(sample, i + 1)] = ",".join(stats)
-                            variant.INFO["{}_rspos_pv_{}".format(sample, i + 1)] = ",".join(stats)
+                            variant.INFO["{}_rspos_pv_{}".format(sample, i + 1)] = ",".join(pvalues)
 
                     global_ac.update(coverage_metrics.ac)
                     global_bq.update(coverage_metrics.bqs)
