@@ -67,9 +67,26 @@ vafator --input-vcf /path/yo/your.vcf \
 ```
 
 This will add annotations for each of the three samples `normal`, `primary` and `metastasis`: `normal_ac`, 
-`normal_dp`, `normal_af`, `normal_pw`, `primary_ac`, `primary_dp`, etc. 
+`normal_dp`, `normal_af`, `normal_pw`, `primary_ac`, `primary_dp`, etc.
 
-## Support for technical replicates
+### Support for indels
+
+VAFator provides equivalent annotations for indels. Depth of coverage and allele frequency are calculated on the
+position immediately before the indel. Only insertions and deletions as recorded in the CIGAR matching the respective
+coordinates and sequence from the VCF file are taken into account. Any read supporting a similar but not identical indel
+is not counted.
+
+**NOTE**: multiallelic mutations are not supported for indels, the indel in the multiallelic position will be
+annotated with null values. This problem can be circumvented by using the Nextflow normalization pipeline described above.
+
+### Support for MNVs
+
+Not supported at the moment when not decomposed.
+
+If running the nextflow pipeline indicated above, MNVs and complex variants are by default decomposed and hence
+correctly annotated by VAFator.
+
+### Support for technical replicates
 
 If more than one BAM  for the same sample is provided then the annotations are calculated across all BAMs 
 and for also each of them separately (eg: `primary_af` provides the allele frequency across all primary tumor BAMs, 
@@ -172,6 +189,17 @@ The statistic value will be close to zero for similar distributions and further 
 The significance value corresponds to the null hypothesis of similar distributions. 
 No multiple test correction is applied over this p-value.
 
+### Ambiguous bases
+
+Some reads may contain ambiguous bases with high base call quality scores.
+The count of all reads passing the quality thresholds that contain an
+ambiguous base overlapping the mutation is annotated.
+All IUPAC ambiguity codes are taken into account.
+
+Furthermore, these reads supporting ambiguous bases are taken into account in the depth of coverage (DP)
+and hence they may dilute the VAF values. In order to exclude those from the depth of coverage use the flag
+`--exclude-ambiguous-bases`. Only SNVs are supported.
+
 ## Understanding the output
 
 The output is a VCF with the some new annotations in the INFO field for the provided sample names.
@@ -210,23 +238,6 @@ nextflow run tron-bioinformatics/tronflow-vcf-postprocessing -r 2.2.0 -profile c
 
 See https://github.com/TRON-Bioinformatics/tronflow-vcf-postprocessing for more details
 
-
-## Support for indels
-
-VAFator provides equivalent annotations for indels. Depth of coverage and allele frequency are calculated on the 
-position immediately before the indel. Only insertions and deletions as recorded in the CIGAR matching the respective 
-coordinates and sequence from the VCF file are taken into account. Any read supporting a similar but not identical indel
-is not counted. 
-
-**NOTE**: multiallelic mutations are not supported for indels, the indel in the multiallelic position will be 
-annotated with null values. This problem can be circumvented by using the Nextflow normalization pipeline described above.
-
-## Support for MNVs
-
-Not supported at the moment when not decomposed.
-
-If running the nextflow pipeline indicated above, MNVs and complex variants are by default decomposed and hence
-correctly annotated by VAFator.
 
 ## Bibliography
 

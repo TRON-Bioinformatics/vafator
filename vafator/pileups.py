@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from typing import Union
 from cyvcf2 import Variant
 from pysam.libcalignmentfile import IteratorColumnRegion, AlignmentFile
+
+from vafator import AMBIGUOUS_BASES
 from vafator.tests.utils import VafatorVariant
 import numpy as np
 
@@ -51,9 +53,9 @@ class CoverageMetrics:
     all_positions: dict = None
 
 
-def get_metrics(variant: Variant, pileups: IteratorColumnRegion) -> CoverageMetrics:
+def get_metrics(variant: Variant, pileups: IteratorColumnRegion, exclude_ambiguous_bases=False) -> CoverageMetrics:
     if is_snp(variant):
-        return get_snv_metrics(pileups)
+        return get_snv_metrics(pileups, exclude_ambiguous_bases)
     elif is_insertion(variant):
         return get_insertion_metrics(variant, pileups)
     elif is_deletion(variant):
@@ -166,7 +168,7 @@ def get_deletion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> Cov
     )
 
 
-def get_snv_metrics(pileups: IteratorColumnRegion) -> CoverageMetrics:
+def get_snv_metrics(pileups: IteratorColumnRegion, exclude_ambiguous_bases=False) -> CoverageMetrics:
     try:
         pileup = next(pileups)
         bases = [s.upper() for s in pileup.get_query_sequences()]
@@ -178,7 +180,10 @@ def get_snv_metrics(pileups: IteratorColumnRegion) -> CoverageMetrics:
         all_mqs = aggregate_list_per_base(bases, pileup.get_mapping_qualities())
         all_positions = aggregate_list_per_base(bases, pileup.get_query_positions())
 
-        dp = len(bases)
+        if exclude_ambiguous_bases:
+            dp = len([b for b in bases if b not in AMBIGUOUS_BASES])
+        else:
+            dp = len(bases)
         ac = Counter(bases)
     except StopIteration:
         # no reads

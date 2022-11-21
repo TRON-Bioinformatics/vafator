@@ -42,13 +42,15 @@ class Annotator(object):
                  tumor_ploidies: dict = {},
                  normal_ploidy=2,
                  fpr=DEFAULT_FPR,
-                 error_rate=DEFAULT_ERROR_RATE):
+                 error_rate=DEFAULT_ERROR_RATE,
+                 exclude_ambiguous_bases=False):
 
         self.mapping_quality_threshold = mapping_qual_thr
         self.base_call_quality_threshold = base_call_qual_thr
         self.purities = purities
         self.tumor_ploidies = tumor_ploidies
         self.normal_ploidy = normal_ploidy
+        self.exclude_ambiguous_bases = exclude_ambiguous_bases
         self.power = PowerCalculator(
             normal_ploidy=normal_ploidy, tumor_ploidies=tumor_ploidies, purities=purities,
             error_rate=error_rate, fpr=fpr)
@@ -64,6 +66,7 @@ class Annotator(object):
         self.vafator_header["purities"] = ";".join(["{}:{}".format(s, p) for s, p in purities.items()])
         self.vafator_header["normal_ploidy"] = normal_ploidy
         self.vafator_header["tumor_ploidy"] = ";".join(["{}:{}".format(s, p) for s, p in tumor_ploidies.items()])
+        self.vafator_header["exclude_ambiguous_bases"] = self.exclude_ambiguous_bases
         self.vcf.add_to_header("##vafator_command_line={}".format(json.dumps(self.vafator_header)))
         # adds to the header all the names of the annotations
         for a in Annotator._get_headers(input_bams):
@@ -297,7 +300,8 @@ class Annotator(object):
                     variant=variant, bam=bam,
                     min_base_quality=self.base_call_quality_threshold,
                     min_mapping_quality=self.mapping_quality_threshold)
-                coverage_metrics = get_metrics(variant=variant, pileups=pileups)
+                coverage_metrics = get_metrics(variant=variant, pileups=pileups,
+                                               exclude_ambiguous_bases=self.exclude_ambiguous_bases)
                 if coverage_metrics is not None:
                     if len(bams) > 1:
                         variant.INFO["{}_af_{}".format(sample, i + 1)] = \

@@ -48,6 +48,8 @@ def annotator():
                         help="False Positive Rate (FPR) to use in the power calculation")
     parser.add_argument("--error-rate", dest="error_rate", required=False, default=DEFAULT_ERROR_RATE, type=float,
                         help="Error rate to use in the power calculation")
+    parser.add_argument("--exclude-ambiguous-bases", dest="exclude_ambiguous_bases", action='store_true',
+                        help="Flag indicating to exclude ambiguous bases from the DP calculation")
 
     args = parser.parse_args()
 
@@ -96,7 +98,8 @@ def annotator():
             tumor_ploidies=tumor_ploidies,
             normal_ploidy=int(args.normal_ploidy),
             fpr=args.fpr,
-            error_rate=args.error_rate
+            error_rate=args.error_rate,
+            exclude_ambiguous_bases=args.exclude_ambiguous_bases
         )
         annotator.run()
     except Exception as e:
