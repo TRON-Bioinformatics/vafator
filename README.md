@@ -193,12 +193,12 @@ No multiple test correction is applied over this p-value.
 
 Some reads may contain ambiguous bases with high base call quality scores.
 The count of all reads passing the quality thresholds that contain an
-ambiguous base overlapping the mutation is annotated.
+ambiguous base overlapping the mutation are annotated.
 All IUPAC ambiguity codes are taken into account.
 
-Furthermore, these reads supporting ambiguous bases are taken into account in the depth of coverage (DP)
-and hence they may dilute the VAF values. In order to exclude those from the depth of coverage use the flag
-`--exclude-ambiguous-bases`. Only SNVs are supported.
+Also, these reads supporting ambiguous bases are not taken into account in the depth of coverage (DP)
+as they may dilute the VAF values. In order to include those into the depth of coverage use the flag
+`--include-ambiguous-bases`. Only SNVs are supported.
 
 ## Understanding the output
 
