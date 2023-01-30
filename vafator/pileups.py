@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from typing import Union
 from cyvcf2 import Variant
 from pysam.libcalignmentfile import IteratorColumnRegion, AlignmentFile
+
+from vafator import AMBIGUOUS_BASES
 from vafator.tests.utils import VafatorVariant
 import numpy as np
 
@@ -33,19 +35,27 @@ def get_variant_pileup(
 
 @dataclass
 class CoverageMetrics:
+    # number supporting reads of each base, including the reference
     ac: dict
+    # total depth of coverage
     dp: int
+    # median base call quality of each base, including the reference
     bqs: dict = None
+    # median mapping quality of each alternate base, including the reference
     mqs: dict = None
+    # median position within the read of each alternate base, including the reference
     positions: dict = None
+    # base call quality distribution of each base, including the reference
     all_bqs: dict = None
+    # mapping quality distribution of each base, including the reference
     all_mqs: dict = None
+    # position within the read distribution of each base, including the reference
     all_positions: dict = None
 
 
-def get_metrics(variant: Variant, pileups: IteratorColumnRegion) -> CoverageMetrics:
+def get_metrics(variant: Variant, pileups: IteratorColumnRegion, include_ambiguous_bases=False) -> CoverageMetrics:
     if is_snp(variant):
-        return get_snv_metrics(pileups)
+        return get_snv_metrics(pileups, include_ambiguous_bases)
     elif is_insertion(variant):
         return get_insertion_metrics(variant, pileups)
     elif is_deletion(variant):
@@ -158,7 +168,7 @@ def get_deletion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> Cov
     )
 
 
-def get_snv_metrics(pileups: IteratorColumnRegion) -> CoverageMetrics:
+def get_snv_metrics(pileups: IteratorColumnRegion, include_ambiguous_bases=False) -> CoverageMetrics:
     try:
         pileup = next(pileups)
         bases = [s.upper() for s in pileup.get_query_sequences()]
@@ -170,7 +180,10 @@ def get_snv_metrics(pileups: IteratorColumnRegion) -> CoverageMetrics:
         all_mqs = aggregate_list_per_base(bases, pileup.get_mapping_qualities())
         all_positions = aggregate_list_per_base(bases, pileup.get_query_positions())
 
-        dp = len(bases)
+        if include_ambiguous_bases:
+            dp = len(bases)
+        else:
+            dp = len([b for b in bases if b not in AMBIGUOUS_BASES])
         ac = Counter(bases)
     except StopIteration:
         # no reads

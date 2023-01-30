@@ -10,6 +10,7 @@ import json
 import asyncio
 import time
 
+from vafator.ploidies import DEFAULT_PLOIDY
 from vafator.rank_sum_test import calculate_rank_sum_test, get_rank_sum_tests
 from vafator.power import PowerCalculator, DEFAULT_ERROR_RATE, DEFAULT_FPR
 from vafator.pileups import get_variant_pileup, get_metrics
@@ -42,13 +43,15 @@ class Annotator(object):
                  tumor_ploidies: dict = {},
                  normal_ploidy=2,
                  fpr=DEFAULT_FPR,
-                 error_rate=DEFAULT_ERROR_RATE):
+                 error_rate=DEFAULT_ERROR_RATE,
+                 include_ambiguous_bases=False):
 
         self.mapping_quality_threshold = mapping_qual_thr
         self.base_call_quality_threshold = base_call_qual_thr
         self.purities = purities
         self.tumor_ploidies = tumor_ploidies
         self.normal_ploidy = normal_ploidy
+        self.include_ambiguous_bases = include_ambiguous_bases
         self.power = PowerCalculator(
             normal_ploidy=normal_ploidy, tumor_ploidies=tumor_ploidies, purities=purities,
             error_rate=error_rate, fpr=fpr)
@@ -63,7 +66,10 @@ class Annotator(object):
         self.vafator_header["base_call_quality_threshold"] = base_call_qual_thr
         self.vafator_header["purities"] = ";".join(["{}:{}".format(s, p) for s, p in purities.items()])
         self.vafator_header["normal_ploidy"] = normal_ploidy
-        self.vafator_header["tumor_ploidy"] = ";".join(["{}:{}".format(s, p) for s, p in tumor_ploidies.items()])
+        self.vafator_header["tumor_ploidy"] = ";".join(["{}:{}".format(s, p.report_value)
+                                                        for s, p in tumor_ploidies.items()]) \
+            if tumor_ploidies else DEFAULT_PLOIDY
+        self.vafator_header["include_ambiguous_bases"] = self.include_ambiguous_bases
         self.vcf.add_to_header("##vafator_command_line={}".format(json.dumps(self.vafator_header)))
         # adds to the header all the names of the annotations
         for a in Annotator._get_headers(input_bams):
@@ -93,6 +99,13 @@ class Annotator(object):
                 'Description': "Allele count for the alternate alleles in the {} sample/s".format(s),
                 'Type': 'Integer',
                 'Number': 'A'
+            })
+            headers.append({
+                'ID': "{}_n".format(s),
+                'Description': "Allele count for ambiguous bases (any IUPAC ambiguity code is counted) "
+                               "in the {} sample/s".format(s),
+                'Type': 'Integer',
+                'Number': '1'
             })
             headers.append({
                 'ID': "{}_pu".format(s),
@@ -208,6 +221,10 @@ class Annotator(object):
                         {'ID': "{}_ac_{}".format(s, i),
                          'Description': "Allele count for the alternate alleles in the {} sample {}".format(s, n),
                          'Type': 'Integer', 'Number': 'A'},
+                        {'ID': "{}_n_{}".format(s, i),
+                         'Description': "Allele count for ambiguous bases (any IUPAC ambiguity code is counted) "
+                                        "in the {} sample {}".format(s, n),
+                         'Type': 'Integer', 'Number': '1'},
                         {'ID': "{}_pu_{}".format(s, i),
                          'Description': "Probability of an undetected mutation given the observed supporting "
                                         "reads (AC), the observed total coverage (DP) and the provided tumor "
@@ -286,12 +303,17 @@ class Annotator(object):
                     variant=variant, bam=bam,
                     min_base_quality=self.base_call_quality_threshold,
                     min_mapping_quality=self.mapping_quality_threshold)
-                coverage_metrics = get_metrics(variant=variant, pileups=pileups)
+                coverage_metrics = get_metrics(variant=variant, pileups=pileups,
+                                               include_ambiguous_bases=self.include_ambiguous_bases)
                 if coverage_metrics is not None:
                     if len(bams) > 1:
-                        variant.INFO["{}_af_{}".format(sample, i + 1)] = ",".join(
-                            [str(self._calculate_af(coverage_metrics.ac[alt], coverage_metrics.dp)) for alt in variant.ALT])
-                        variant.INFO["{}_ac_{}".format(sample, i + 1)] = ",".join([str(coverage_metrics.ac[alt]) for alt in variant.ALT])
+                        variant.INFO["{}_af_{}".format(sample, i + 1)] = \
+                            ",".join([str(self._calculate_af(coverage_metrics.ac[alt], coverage_metrics.dp))
+                                      for alt in variant.ALT])
+                        variant.INFO["{}_ac_{}".format(sample, i + 1)] = \
+                            ",".join([str(coverage_metrics.ac[alt]) for alt in variant.ALT])
+                        variant.INFO["{}_n_{}".format(sample, i + 1)] = \
+                            str(sum([coverage_metrics.ac.get(n, 0) for n in vafator.AMBIGUOUS_BASES]))
                         variant.INFO["{}_dp_{}".format(sample, i + 1)] = coverage_metrics.dp
                         variant.INFO["{}_pu_{}".format(sample, i + 1)] = ",".join(
                             [str(self.power.calculate_power(
@@ -319,12 +341,12 @@ class Annotator(object):
                         pvalues, stats = get_rank_sum_tests(coverage_metrics.all_bqs, variant)
                         if stats:
                             variant.INFO["{}_rsbq_{}".format(sample, i + 1)] = ",".join(stats)
-                            variant.INFO["{}_rsbq_pv_{}".format(sample, i + 1)] = ",".join(stats)
+                            variant.INFO["{}_rsbq_pv_{}".format(sample, i + 1)] = ",".join(pvalues)
 
                         pvalues, stats = get_rank_sum_tests(coverage_metrics.all_positions, variant)
                         if stats:
                             variant.INFO["{}_rspos_{}".format(sample, i + 1)] = ",".join(stats)
-                            variant.INFO["{}_rspos_pv_{}".format(sample, i + 1)] = ",".join(stats)
+                            variant.INFO["{}_rspos_pv_{}".format(sample, i + 1)] = ",".join(pvalues)
 
                     global_ac.update(coverage_metrics.ac)
                     global_bq.update(coverage_metrics.bqs)
@@ -337,6 +359,7 @@ class Annotator(object):
 
             variant.INFO["{}_af".format(sample)] = ",".join([str(self._calculate_af(global_ac[alt], global_dp)) for alt in variant.ALT])
             variant.INFO["{}_ac".format(sample)] = ",".join([str(global_ac[alt]) for alt in variant.ALT])
+            variant.INFO["{}_n".format(sample)] = str(sum([global_ac.get(n, 0) for n in vafator.AMBIGUOUS_BASES]))
             variant.INFO["{}_dp".format(sample)] = global_dp
             variant.INFO["{}_eaf".format(sample)] = str(self.power.calculate_expected_vaf(
                 sample=sample, variant=variant))
@@ -354,6 +377,8 @@ class Annotator(object):
             variant.INFO["{}_pos".format(sample)] = ",".join(
                 [str(global_pos[variant.REF])] + [str(global_pos[alt]) for alt in variant.ALT])
 
+            # for these rank sum tests it is required at least one value for the alternate and one value for the
+            # reference otherwise it cannot be calculated
             pvalues, stats = get_rank_sum_tests(global_all_mqs, variant)
             if stats:
                 variant.INFO["{}_rsmq".format(sample)] = ",".join(stats)

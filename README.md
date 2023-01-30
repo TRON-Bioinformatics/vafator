@@ -4,6 +4,7 @@
 [![PyPI version](https://badge.fury.io/py/vafator.svg)](https://badge.fury.io/py/vafator)
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/vafator/badges/version.svg)](https://anaconda.org/bioconda/vafator)
 [![Run unit tests](https://github.com/TRON-Bioinformatics/vafator/actions/workflows/unit_tests.yml/badge.svg?branch=master)](https://github.com/TRON-Bioinformatics/vafator/actions/workflows/unit_tests.yml)
+[![codecov](https://codecov.io/gh/TRON-Bioinformatics/vafator/branch/master/graph/badge.svg?token=QLK84NI44G)](https://codecov.io/gh/TRON-Bioinformatics/vafator)
 [![License](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
 
 
@@ -20,24 +21,27 @@ somatic variant calling, tumor evolution with multiple samples at different time
 |-----------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|-------|-----------------|
 | Allele frequency (AF)                   | Ratio of reads supporting the alternate allele                                                                                                                                                          | {sample}_af       | float | A               |
 | Allele count (AC)                       | Count of reads supporting the alternate allele                                                                                                                                                          | {sample}_ac       | int   | A               |
+| Count ambiguous bases (N)               | Count of ambiguous bases (N + all IUPAC ambiguity codes) overlapping the variant                                                                                                                        | {sample}_n        | int   | 1               |
 | Depth of coverage (DP)                  | Count of reads covering the position of the variant                                                                                                                                                     | {sample}_dp       | int   | 1               |
 | Expected allele frequency               | Expected allele frequency assuming a multiplicity of the mutation m=1 (the number of DNA copies bearing a mutation) considering the given purity and ploidy/copy numbers                                | {sample}_eaf      | float | 1               |
 | Probability undetected                  | Probability that a given somatic mutation is undetected given the total coverage, supporting reads and expected allele frequency                                                                        | {sample}_pu       | float | A               |
 | Power                                   | Power to detect a somatic mutation given the total coverage and expected allele frequency (Carter, 2012)                                                                                                | {sample}_pw       | float | 1               |
 | k                                       | Minimum number of supporting reads such that the probability of observing k or more non-reference reads due to sequencing error is less than the defined false positive rate (FPR) (Carter, 2012)       | {sample}_k        | float | 1               |
 | Mapping quality median                  | Median mapping quality of reads supporting each of the reference and the alternate alleles                                                                                                              | {sample}_mq       | float | R               |
-| Mapping quality rank sum test           | Rank sum test comparing the MQ distribution between reads supporting the reference and the alternate. Values closer to zero indicate similar distributions                                              | {sample}_rsmq     | float | A               |
-| Mapping quality rank sum test p-value   | Significance of the rank sum test comparing the MQ distribution between reads supporting the reference and the alternate. The null hypothesis is that there is no difference in the distributions       | {sample}_rsmq_pv  | float | A               |
+| Mapping quality rank sum test (§§)            | Rank sum test comparing the MQ distribution between reads supporting the reference and the alternate. Values closer to zero indicate similar distributions.                                             | {sample}_rsmq     | float | A               |
+| Mapping quality rank sum test p-value (§§)   | Significance of the rank sum test comparing the MQ distribution between reads supporting the reference and the alternate. The null hypothesis is that there is no difference in the distributions       | {sample}_rsmq_pv  | float | A               |
 | Base call quality median                | Median base call quality of reads supporting each of the reference and the alternate alleles (not available for deletions)                                                                              | {sample}_bq       | float | R               |
-| Base call quality rank sum test         | Rank sum test comparing the BQ distribution between reads supporting the reference and the alternate. Values closer to zero indicate similar distributions                                              | {sample}_rsbq     | float | A               |
-| Base call quality rank sum test p-value | Significance of the rank sum test comparing the BQ distribution between reads supporting the reference and the alternate. The null hypothesis is that there is no difference in the distributions       | {sample}_rsbq_pv  | float | A               |
+| Base call quality rank sum test (§§)        | Rank sum test comparing the BQ distribution between reads supporting the reference and the alternate. Values closer to zero indicate similar distributions                                              | {sample}_rsbq     | float | A               |
+| Base call quality rank sum test p-value (§§) | Significance of the rank sum test comparing the BQ distribution between reads supporting the reference and the alternate. The null hypothesis is that there is no difference in the distributions       | {sample}_rsbq_pv  | float | A               |
 | Position median                         | Median position within reads supporting each of the reference and the alternate alleles (in indels this is the start position)                                                                          | {sample}_pos      | float | R               |
-| Position rank sum test                  | Rank sum test comparing the position distribution between reads supporting the reference and the alternate. Values closer to zero indicate similar distributions                                        | {sample}_rspos    | float | A               |
-| Position rank sum test p-value          | Significance of the rank sum test comparing the position distribution between reads supporting the reference and the alternate. The null hypothesis is that there is no difference in the distributions | {sample}_rspos_pv | float | A               |
-
+| Position rank sum test  (§§)                | Rank sum test comparing the position distribution between reads supporting the reference and the alternate. Values closer to zero indicate similar distributions                                        | {sample}_rspos    | float | A               |
+| Position rank sum test p-value (§§)         | Significance of the rank sum test comparing the position distribution between reads supporting the reference and the alternate. The null hypothesis is that there is no difference in the distributions | {sample}_rspos_pv | float | A               |
 
 § cardinality is defined as in the VCF format specification: `A` refers to one value per alternate allele, 
 `R` refers to one value per possible allele (including the reference), `1` refers to one value.
+
+§§ rank sum tests require at least one read supporting the reference and one read supporting the alternate
+
 
 VAFator uses cyvcf2 (Pederson, 2017) to read/write VCF files and pysam (https://github.com/pysam-developers/pysam) to read BAM files.
 Both libraries are cython wrappers around HTSlib (Bonfield, 2021).
@@ -64,9 +68,26 @@ vafator --input-vcf /path/yo/your.vcf \
 ```
 
 This will add annotations for each of the three samples `normal`, `primary` and `metastasis`: `normal_ac`, 
-`normal_dp`, `normal_af`, `normal_pw`, `primary_ac`, `primary_dp`, etc. 
+`normal_dp`, `normal_af`, `normal_pw`, `primary_ac`, `primary_dp`, etc.
 
-## Support for technical replicates
+### Support for indels
+
+VAFator provides equivalent annotations for indels. Depth of coverage and allele frequency are calculated on the
+position immediately before the indel. Only insertions and deletions as recorded in the CIGAR matching the respective
+coordinates and sequence from the VCF file are taken into account. Any read supporting a similar but not identical indel
+is not counted.
+
+**NOTE**: multiallelic mutations are not supported for indels, the indel in the multiallelic position will be
+annotated with null values. This problem can be circumvented by using the Nextflow normalization pipeline described above.
+
+### Support for MNVs
+
+Not supported at the moment when not decomposed.
+
+If running the nextflow pipeline indicated above, MNVs and complex variants are by default decomposed and hence
+correctly annotated by VAFator.
+
+### Support for technical replicates
 
 If more than one BAM  for the same sample is provided then the annotations are calculated across all BAMs 
 and for also each of them separately (eg: `primary_af` provides the allele frequency across all primary tumor BAMs, 
@@ -169,6 +190,17 @@ The statistic value will be close to zero for similar distributions and further 
 The significance value corresponds to the null hypothesis of similar distributions. 
 No multiple test correction is applied over this p-value.
 
+### Ambiguous bases
+
+Some reads may contain ambiguous bases with high base call quality scores.
+The count of all reads passing the quality thresholds that contain an
+ambiguous base overlapping the mutation are annotated.
+All IUPAC ambiguity codes are taken into account.
+
+Also, these reads supporting ambiguous bases are not taken into account in the depth of coverage (DP)
+as they may dilute the VAF values. In order to include those into the depth of coverage use the flag
+`--include-ambiguous-bases`. Only SNVs are supported.
+
 ## Understanding the output
 
 The output is a VCF with the some new annotations in the INFO field for the provided sample names.
@@ -207,23 +239,6 @@ nextflow run tron-bioinformatics/tronflow-vcf-postprocessing -r 2.2.0 -profile c
 
 See https://github.com/TRON-Bioinformatics/tronflow-vcf-postprocessing for more details
 
-
-## Support for indels
-
-VAFator provides equivalent annotations for indels. Depth of coverage and allele frequency are calculated on the 
-position immediately before the indel. Only insertions and deletions as recorded in the CIGAR matching the respective 
-coordinates and sequence from the VCF file are taken into account. Any read supporting a similar but not identical indel
-is not counted. 
-
-**NOTE**: multiallelic mutations are not supported for indels, the indel in the multiallelic position will be 
-annotated with null values. This problem can be circumvented by using the Nextflow normalization pipeline described above.
-
-## Support for MNVs
-
-Not supported at the moment when not decomposed.
-
-If running the nextflow pipeline indicated above, MNVs and complex variants are by default decomposed and hence
-correctly annotated by VAFator.
 
 ## Bibliography
 
