@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        python-version: [ 3.7, 3.8, 3.9 ]
+        python-version: [ 3.7, 3.8, 3.9, 3.10 ]
 
     steps:
     - uses: actions/checkout@v2
@@ -15,10 +15,6 @@ jobs:
       uses: actions/setup-python@v4
       with:
           python-version: ${{ matrix.python-version }}
-    - uses: conda-incubator/setup-miniconda@v2
-      with:
-        auto-update-conda: true
-        channels: defaults,conda-forge,bioconda
     - name: Install dependencies
       run: |
         sudo apt-get update
@@ -26,10 +22,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install setuptools wheel
         # this is needed by pybedtools
-        #conda install --yes bedtools
         sudo apt-get --assume-yes install bedtools
-        # this is needed by cyvcf2 and pysam
-        #conda install --yes htslib=1.14
         # install python requirements
         pip install -r requirements.txt
     - name: Install vafator
