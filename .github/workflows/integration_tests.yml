@@ -19,13 +19,13 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get --assume-yes install build-essential libcurl4-openssl-dev libz-dev liblzma-dev
+        #sudo apt-get --assume-yes install build-essential libcurl4-openssl-dev libz-dev liblzma-dev
         python -m pip install --upgrade pip
         pip install setuptools wheel
         # this is needed by pybedtools
-        conda install --yes bedtools
+        #conda install --yes bedtools
         # this is needed by cyvcf2 and pysam
-        conda install --yes htslib=1.14
+        #conda install --yes htslib=1.14
         # install python requirements
         pip install -r requirements.txt
     - name: Install vafator
