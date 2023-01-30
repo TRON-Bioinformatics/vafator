@@ -15,8 +15,10 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install setuptools wheel
+        pip install setuptools wheel coverage
         pip install virtualenv tox==3.26.0 tox-wheel==1.0.0 tox-gh-actions
     - name: Build, install and run unit tests
       run: |
         tox
+    - name: Upload Coverage to Codecov
+      uses: codecov/codecov-action@v3
