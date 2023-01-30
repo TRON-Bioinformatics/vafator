@@ -27,7 +27,7 @@ jobs:
         pip install setuptools wheel
         # this is needed by pybedtools
         #conda install --yes bedtools
-        apt-get --assume-yes install bedtools
+        sudo apt-get --assume-yes install bedtools
         # this is needed by cyvcf2 and pysam
         #conda install --yes htslib=1.14
         # install python requirements
