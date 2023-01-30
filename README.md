@@ -4,6 +4,7 @@
 [![PyPI version](https://badge.fury.io/py/vafator.svg)](https://badge.fury.io/py/vafator)
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/vafator/badges/version.svg)](https://anaconda.org/bioconda/vafator)
 [![Run unit tests](https://github.com/TRON-Bioinformatics/vafator/actions/workflows/unit_tests.yml/badge.svg?branch=master)](https://github.com/TRON-Bioinformatics/vafator/actions/workflows/unit_tests.yml)
+[![codecov](https://codecov.io/gh/TRON-Bioinformatics/vafator/branch/master/graph/badge.svg?token=QLK84NI44G)](https://codecov.io/gh/TRON-Bioinformatics/vafator)
 [![License](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
 
 
