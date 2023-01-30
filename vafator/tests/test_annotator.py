@@ -305,7 +305,8 @@ class TestAnnotator(TestCase):
             self._assert_positive_integer(v.INFO.get(self._get_annotation_name('pos', sample_name, replicate=replicate), 0))
         vcf.close()
 
-    def _get_annotation_name(self, annotation_name, sample_name, replicate=None):
+    @staticmethod
+    def _get_annotation_name(annotation_name, sample_name, replicate=None):
         annotation_name = "{}_{}".format(sample_name, annotation_name)
         if replicate:
             annotation_name = "{}_{}".format(annotation_name, replicate)
