@@ -22,6 +22,7 @@ jobs:
         pip install virtualenv tox==3.26.0 tox-wheel==1.0.0 tox-gh-actions
     - name: Build, install and run unit tests
       run: |
-        tox
+        pip install -r requirements.txt
+        coverage run -m unittest discover vafator.tests
     - name: Upload Coverage to Codecov
       uses: codecov/codecov-action@v3
