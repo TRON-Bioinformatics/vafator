@@ -28,6 +28,7 @@ jobs:
         pip install -r requirements.txt
     - name: Install vafator
       run: |
+        pip cache purge
         python setup.py bdist_wheel
         pip install dist/vafator-*.whl
     - name: Run integration tests
