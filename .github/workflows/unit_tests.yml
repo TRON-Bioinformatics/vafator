@@ -22,8 +22,8 @@ jobs:
     - name: Build, install and run unit tests
       run: |
         pip install -r requirements.txt
-        pip install --force-reinstall "numpy==1.24.4"
-        pip install --no-cache-dir --force-reinstall --no-binary :all: cyvcf2
+        pip install --force-reinstall numpy
+        pip install --no-cache-dir --force-reinstall --no-binary :all: cyvcf2==0.30.14
         coverage run -m unittest discover vafator.tests
     - name: Upload Coverage to Codecov
       uses: codecov/codecov-action@v3
