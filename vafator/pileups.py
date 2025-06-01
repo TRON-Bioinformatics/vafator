@@ -181,9 +181,10 @@ def get_snv_metrics(pileups: IteratorColumnRegion, include_ambiguous_bases=False
         all_positions = aggregate_list_per_base(bases, pileup.get_query_positions())
 
         if include_ambiguous_bases:
-            dp = len(bases)
+            dp = len([b for b in bases if b!= ""])
         else:
-            dp = len([b for b in bases if b not in AMBIGUOUS_BASES])
+            # remove ambiguous bases and reads where the position is spliced out
+            dp = len([b for b in bases if b not in AMBIGUOUS_BASES and b != ""])
         ac = Counter(bases)
     except StopIteration:
         # no reads
