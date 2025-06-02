@@ -20,6 +20,7 @@ jobs:
 
     - name: Install dependencies
       run: |
+        apt install bedtools
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install .
