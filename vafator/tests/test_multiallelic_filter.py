@@ -84,6 +84,23 @@ class TestMultiallelicFilter(TestCase):
         self.assertTrue(n_variants_input == n_variants_output + 2)
         self.assertTrue(n_variants_output == 1)
 
+    def test_empty_vcf(self):
+        input_file = pkg_resources.resource_filename(__name__, "resources/test6.vcf")
+        output_vcf = pkg_resources.resource_filename(
+            __name__, "resources/results/test6_output.vcf"
+        )
+        multiallelic_filter = MultiallelicFilter(
+            input_vcf=input_file, output_vcf=output_vcf, tumor_sample_name="tumor"
+        )
+        multiallelic_filter.run()
+ 
+        self.assertTrue(os.path.exists(output_vcf))
+
+        # Both should be 0.
+        n_variants_input = test_utils._get_count_variants(input_file)
+        n_variants_output = test_utils._get_count_variants(output_vcf)
+        self.assertTrue(n_variants_input == n_variants_output)
+
     def _get_info_at(self, input_file, chromosome, position, annotation):
         vcf = VCF(input_file)
         self.assertIsNotNone(vcf)
