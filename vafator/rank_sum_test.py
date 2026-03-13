@@ -4,6 +4,8 @@ import numpy as np
 
 
 def calculate_rank_sum_test(alternate_dist: List[int], reference_dist: List[int]) -> Tuple[float, float]:
+    if not alternate_dist or not reference_dist:  # skip empty distributions
+        return np.nan, np.nan
     stat, pvalue = scipy.stats.ranksums(x=alternate_dist, y=reference_dist)
     return round(stat, 3), round(pvalue, 5)
 
