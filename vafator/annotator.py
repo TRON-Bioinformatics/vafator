@@ -13,7 +13,9 @@ import time
 from vafator.ploidies import DEFAULT_PLOIDY
 from vafator.rank_sum_test import calculate_rank_sum_test, get_rank_sum_tests
 from vafator.power import PowerCalculator, DEFAULT_ERROR_RATE, DEFAULT_FPR
-from vafator.pileups import get_variant_pileup, get_metrics
+from vafator.pileups import (
+    collect_metrics_for_chrom, stream_variants_by_chrom, EMPTY_METRICS
+)
 
 
 BATCH_SIZE = 10000
@@ -288,7 +290,11 @@ class Annotator(object):
         for v in batch:
             self.vcf_writer.write_record(v)
 
-    def _add_stats(self, variant: Variant):
+    def _add_stats(self, variant: Variant, metrics_by_bam: dict):
+        """
+        Annotate a single variant using pre-computed metrics.
+        metrics_by_bam: {(sample, bam_index): CoverageMetrics}
+        """
         for sample, bams in self.bam_readers.items():
             global_dp = 0
             global_ac = Counter()
@@ -298,13 +304,10 @@ class Annotator(object):
             global_all_mqs = {}
             global_all_bqs = {}
             global_all_positions = {}
+
             for i, bam in enumerate(bams):
-                pileups = get_variant_pileup(
-                    variant=variant, bam=bam,
-                    min_base_quality=self.base_call_quality_threshold,
-                    min_mapping_quality=self.mapping_quality_threshold)
-                coverage_metrics = get_metrics(variant=variant, pileups=pileups,
-                                               include_ambiguous_bases=self.include_ambiguous_bases)
+                coverage_metrics = metrics_by_bam.get((sample, i), EMPTY_METRICS)
+
                 if coverage_metrics is not None:
                     if len(bams) > 1:
                         variant.INFO["{}_af_{}".format(sample, i + 1)] = \
@@ -377,8 +380,7 @@ class Annotator(object):
             variant.INFO["{}_pos".format(sample)] = ",".join(
                 [str(global_pos[variant.REF])] + [str(global_pos[alt]) for alt in variant.ALT])
 
-            # for these rank sum tests it is required at least one value for the alternate and one value for the
-            # reference otherwise it cannot be calculated
+            # rank sum tests require at least one ref and one alt value
             pvalues, stats = get_rank_sum_tests(global_all_mqs, variant)
             if stats:
                 variant.INFO["{}_rsmq".format(sample)] = ",".join(stats)
@@ -399,16 +401,41 @@ class Annotator(object):
 
     def run(self):
         batch = []
-        variant: Variant
-        for variant in self.vcf:
-            # gets the counts of all bases across all BAMs
-            self._add_stats(variant)
 
-            batch.append(variant)
-            if len(batch) >= BATCH_SIZE:
-                self._write_batch(batch)
-                batch = []
-        if len(batch) > 0:
+        for chrom, chrom_variants in stream_variants_by_chrom(self.vcf):
+            # For each BAM, open ONE pileup iterator per chromosome and compute
+            # metrics immediately for each column — avoids per-variant pileup overhead.
+            # Key: (sample, bam_index, variant_pos, REF, ALT[0]) -> CoverageMetrics
+            all_metrics = {}  # {(sample, bam_idx): {(pos, REF, ALT): CoverageMetrics}}
+
+            for sample, bams in self.bam_readers.items():
+                for i, bam in enumerate(bams):
+                    all_metrics[(sample, i)] = collect_metrics_for_chrom(
+                        chrom=chrom,
+                        variants=chrom_variants,
+                        bam=bam,
+                        min_base_quality=self.base_call_quality_threshold,
+                        min_mapping_quality=self.mapping_quality_threshold,
+                        include_ambiguous_bases=self.include_ambiguous_bases,
+                    )
+
+            for variant in chrom_variants:
+                # build per-BAM metrics lookup for this specific variant
+                metrics_by_bam = {
+                    (sample, i): all_metrics[(sample, i)].get(
+                        (variant.POS, variant.REF, variant.ALT[0]), EMPTY_METRICS
+                    )
+                    for sample, bams in self.bam_readers.items()
+                    for i in range(len(bams))
+                }
+                self._add_stats(variant, metrics_by_bam)
+
+                batch.append(variant)
+                if len(batch) >= BATCH_SIZE:
+                    self._write_batch(batch)
+                    batch = []
+
+        if batch:
             self._write_batch(batch)
 
         time.sleep(2)
