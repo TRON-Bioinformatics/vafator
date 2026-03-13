@@ -28,9 +28,11 @@ def get_variant_pileup(
     # approximately +- read size bp
     return bam.pileup(contig=variant.CHROM, start=position - 1, stop=position,
                       truncate=True,                    # returns only this column
-                      max_depth=0,                      # disables maximum depth
+                      max_depth=1000000,
                       min_base_quality=min_base_quality,
-                      min_mapping_quality=min_mapping_quality)
+                      min_mapping_quality=min_mapping_quality,
+                      stepper='samtools',
+                    )
 
 
 @dataclass
@@ -171,21 +173,45 @@ def get_deletion_metrics(variant: Variant, pileups: IteratorColumnRegion) -> Cov
 def get_snv_metrics(pileups: IteratorColumnRegion, include_ambiguous_bases=False) -> CoverageMetrics:
     try:
         pileup = next(pileups)
-        bases = [s.upper() for s in pileup.get_query_sequences()]
 
-        bqs = aggregate_median_per_base(bases, pileup.get_query_qualities())
-        mqs = aggregate_median_per_base(bases, pileup.get_mapping_qualities())
-        positions = aggregate_median_per_base(bases, pileup.get_query_positions())
-        all_bqs = aggregate_list_per_base(bases, pileup.get_query_qualities())
-        all_mqs = aggregate_list_per_base(bases, pileup.get_mapping_qualities())
-        all_positions = aggregate_list_per_base(bases, pileup.get_query_positions())
+        bases = []
+        qualities = []
+        mapping_qualities = []
+        query_positions = []
+
+        # to reproduce the older versions of Vafator, include deletions at query position when computing stats 
+        for read in pileup.pileups:
+            if read.is_refskip:
+                continue
+            if read.is_del:
+                bases.append("")
+                qualities.append(0)  # no base quality for deletions
+                mapping_qualities.append(read.alignment.mapping_quality)
+                query_positions.append(read.query_position_or_next)
+            else:
+                base = read.alignment.query_sequence[read.query_position].upper()
+                bases.append(base)
+                qualities.append(read.alignment.query_qualities[read.query_position])
+                mapping_qualities.append(read.alignment.mapping_quality)
+                query_positions.append(read.query_position)
+
+
+        all_bqs = aggregate_list_per_base(bases, qualities)
+        all_mqs = aggregate_list_per_base(bases, mapping_qualities)
+        all_positions = aggregate_list_per_base(bases, query_positions)
+
+        bqs = Counter({b: np.median(l) for b, l in all_bqs.items()})
+        mqs = Counter({b: np.median(l) for b, l in all_mqs.items()})
+        positions = Counter({b: np.median(l) for b, l in all_positions.items()})
+
+        # print('Summary', bases, qualities, mapping_qualities, '\n\n\n')
+
+        ac = Counter(b for b in bases if b != "")  # deletions don't count as alleles
 
         if include_ambiguous_bases:
-            dp = len([b for b in bases if b!= ""])
+            dp = len(bases)
         else:
-            # remove ambiguous bases and reads where the position is spliced out
-            dp = len([b for b in bases if b not in AMBIGUOUS_BASES and b != ""])
-        ac = Counter(bases)
+            dp = sum(1 for b in bases if b == "" or b not in AMBIGUOUS_BASES)
     except StopIteration:
         # no reads
         dp = 0
