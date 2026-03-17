@@ -1,31 +1,50 @@
 from collections import Counter
+import os
+from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 import pysam
 from cyvcf2 import VCF, Writer, Variant
-import os
 import vafator
 import datetime
 import json
-import asyncio
-import time
 
 from vafator.ploidies import DEFAULT_PLOIDY
 from vafator.rank_sum_test import calculate_rank_sum_test, get_rank_sum_tests
 from vafator.power import PowerCalculator, DEFAULT_ERROR_RATE, DEFAULT_FPR
 from vafator.pileups import (
-    collect_metrics_for_chrom, stream_variants_by_chrom, EMPTY_METRICS
+    collect_metrics_for_chrom, stream_variants_by_chrom, EMPTY_METRICS, VariantRecord
 )
 
 
 BATCH_SIZE = 10000
 
 
-def background(f):
-    def wrapped(*args, **kwargs):
-        return asyncio.get_event_loop().run_in_executor(None, f, *args, **kwargs)
+def _collect_metrics_worker(chrom, variant_tuples, bam_paths, min_base_quality,
+                            min_mapping_quality, include_ambiguous_bases):
+    """
+    Top-level worker function for ProcessPoolExecutor — must be module-level to be picklable.
+    Opens its own BAM readers (AlignmentFile objects cannot be shared across processes).
+    Receives variant data as plain tuples (cyvcf2.Variant objects are not picklable).
 
-    return wrapped
+    Returns {(sample, bam_idx): {(pos, REF, ALT): CoverageMetrics}}
+    """
+    all_metrics = {}
+    variants = [VariantRecord(CHROM=chrom, POS=pos, REF=ref, ALT=[alt])
+                for pos, ref, alt in variant_tuples]
+    for sample, bam_files in bam_paths.items():
+        for i, bam_path in enumerate(bam_files):
+            bam = pysam.AlignmentFile(bam_path, "rb")
+            all_metrics[(sample, i)] = collect_metrics_for_chrom(
+                chrom=chrom,
+                variants=variants,
+                bam=bam,
+                min_base_quality=min_base_quality,
+                min_mapping_quality=min_mapping_quality,
+                include_ambiguous_bases=include_ambiguous_bases,
+            )
+            bam.close()
+    return all_metrics
 
 
 class Annotator(object):
@@ -46,7 +65,8 @@ class Annotator(object):
                  normal_ploidy=2,
                  fpr=DEFAULT_FPR,
                  error_rate=DEFAULT_ERROR_RATE,
-                 include_ambiguous_bases=False):
+                 include_ambiguous_bases=False,
+                 num_processes: int = 1):
 
         self.mapping_quality_threshold = mapping_qual_thr
         self.base_call_quality_threshold = base_call_qual_thr
@@ -54,6 +74,7 @@ class Annotator(object):
         self.tumor_ploidies = tumor_ploidies
         self.normal_ploidy = normal_ploidy
         self.include_ambiguous_bases = include_ambiguous_bases
+        self.num_processes = num_processes
         self.power = PowerCalculator(
             normal_ploidy=normal_ploidy, tumor_ploidies=tumor_ploidies, purities=purities,
             error_rate=error_rate, fpr=fpr)
@@ -77,7 +98,8 @@ class Annotator(object):
         for a in Annotator._get_headers(input_bams):
             self.vcf.add_info_to_header(a)
         self.vcf_writer = Writer(output_vcf, self.vcf)
-        self.bam_readers = {s : [pysam.AlignmentFile(b, "rb") for b in bams] for s, bams in input_bams.items()}
+        self.bam_paths = input_bams  # {sample: [path, ...]} — picklable, passed to workers
+        self.bam_readers = {s: [pysam.AlignmentFile(b, "rb") for b in bams] for s, bams in input_bams.items()}
 
     @staticmethod
     def _get_headers(input_bams: dict):
@@ -285,7 +307,6 @@ class Annotator(object):
                     ]
         return headers
 
-    @background
     def _write_batch(self, batch):
         for v in batch:
             self.vcf_writer.write_record(v)
@@ -401,47 +422,79 @@ class Annotator(object):
 
     def run(self):
         batch = []
-
-        for chrom, chrom_variants in stream_variants_by_chrom(self.vcf):
-            # For each BAM, open ONE pileup iterator per chromosome and compute
-            # metrics immediately for each column — avoids per-variant pileup overhead.
-            # Key: (sample, bam_index, variant_pos, REF, ALT[0]) -> CoverageMetrics
-            all_metrics = {}  # {(sample, bam_idx): {(pos, REF, ALT): CoverageMetrics}}
-
-            for sample, bams in self.bam_readers.items():
-                for i, bam in enumerate(bams):
-                    all_metrics[(sample, i)] = collect_metrics_for_chrom(
-                        chrom=chrom,
-                        variants=chrom_variants,
-                        bam=bam,
-                        min_base_quality=self.base_call_quality_threshold,
-                        min_mapping_quality=self.mapping_quality_threshold,
-                        include_ambiguous_bases=self.include_ambiguous_bases,
-                    )
-
-            for variant in chrom_variants:
-                # build per-BAM metrics lookup for this specific variant
-                metrics_by_bam = {
-                    (sample, i): all_metrics[(sample, i)].get(
-                        (variant.POS, variant.REF, variant.ALT[0]), EMPTY_METRICS
-                    )
-                    for sample, bams in self.bam_readers.items()
-                    for i in range(len(bams))
-                }
-                self._add_stats(variant, metrics_by_bam)
-
-                batch.append(variant)
-                if len(batch) >= BATCH_SIZE:
-                    self._write_batch(batch)
-                    batch = []
+        if self.num_processes > 1:
+            self._run_parallel(batch)
+        else:
+            self._run_serial(batch)
 
         if batch:
             self._write_batch(batch)
-
-        time.sleep(2)
 
         self.vcf_writer.close()
         self.vcf.close()
         for _, bams in self.bam_readers.items():
             for bam in bams:
                 bam.close()
+
+    def _run_serial(self, batch):
+        for chrom, chrom_variants in stream_variants_by_chrom(self.vcf):
+            all_metrics = self._collect_chrom_metrics(chrom, chrom_variants)
+            self._annotate_and_batch(chrom_variants, all_metrics, batch)
+
+    def _run_parallel(self, batch):
+        # variant objects are not picklable — pass only (POS, REF, ALT) tuples to workers,
+        # keep the actual Variant objects in the main process for annotation and writing
+        chrom_variants_map = {}
+        futures = {}
+
+        with ProcessPoolExecutor(max_workers=self.num_processes) as executor:
+            for chrom, chrom_variants in stream_variants_by_chrom(self.vcf):
+                chrom_variants_map[chrom] = chrom_variants
+                variant_tuples = [(v.POS, v.REF, v.ALT[0]) for v in chrom_variants]
+                futures[executor.submit(
+                    _collect_metrics_worker,
+                    chrom=chrom,
+                    variant_tuples=variant_tuples,
+                    bam_paths=self.bam_paths,
+                    min_base_quality=self.base_call_quality_threshold,
+                    min_mapping_quality=self.mapping_quality_threshold,
+                    include_ambiguous_bases=self.include_ambiguous_bases,
+                )] = chrom
+
+            # collect in submission order to preserve VCF chromosome order
+            chrom_results = {futures[f]: f.result() for f in futures}
+
+        for chrom, chrom_variants in chrom_variants_map.items():
+            self._annotate_and_batch(chrom_variants, chrom_results[chrom], batch)
+
+
+    def _collect_chrom_metrics(self, chrom, chrom_variants):
+        """Collect metrics for all BAMs for one chromosome in the main process."""
+        all_metrics = {}
+        for sample, bams in self.bam_readers.items():
+            for i, bam in enumerate(bams):
+                all_metrics[(sample, i)] = collect_metrics_for_chrom(
+                    chrom=chrom,
+                    variants=chrom_variants,
+                    bam=bam,
+                    min_base_quality=self.base_call_quality_threshold,
+                    min_mapping_quality=self.mapping_quality_threshold,
+                    include_ambiguous_bases=self.include_ambiguous_bases,
+                )
+        return all_metrics
+
+    def _annotate_and_batch(self, chrom_variants, all_metrics, batch):
+        """Annotate variants using pre-computed metrics and append to write batch."""
+        for variant in chrom_variants:
+            metrics_by_bam = {
+                (sample, i): all_metrics[(sample, i)].get(
+                    (variant.POS, variant.REF, variant.ALT[0]), EMPTY_METRICS
+                )
+                for sample, bams in self.bam_readers.items()
+                for i in range(len(bams))
+            }
+            self._add_stats(variant, metrics_by_bam)
+            batch.append(variant)
+            if len(batch) >= BATCH_SIZE:
+                self._write_batch(batch)
+                batch.clear()

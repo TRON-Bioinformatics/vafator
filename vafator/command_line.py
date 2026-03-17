@@ -50,6 +50,8 @@ def annotator():
                         help="Error rate to use in the power calculation")
     parser.add_argument("--include-ambiguous-bases", dest="include_ambiguous_bases", action='store_true',
                         help="Flag indicating to include ambiguous bases from the DP calculation")
+    parser.add_argument("--num-processes", dest="num_processes", required=False, default=1, type=int,
+                        help="Number of processes for parallel chromosome-level annotation (default: 1)")
 
     args = parser.parse_args()
 
@@ -87,24 +89,22 @@ def annotator():
     if len(bams) == 0:
         raise ValueError("Please, provide at least one bam file with '--bam sample_name /path/to/file.bam'")
 
-    try:
-        annotator = Annotator(
-            input_vcf=args.input_vcf,
-            output_vcf=args.output_vcf,
-            input_bams=bams,
-            mapping_qual_thr=args.mapping_quality,
-            base_call_qual_thr=args.base_call_quality,
-            purities=purities,
-            tumor_ploidies=tumor_ploidies,
-            normal_ploidy=int(args.normal_ploidy),
-            fpr=args.fpr,
-            error_rate=args.error_rate,
-            include_ambiguous_bases=args.include_ambiguous_bases
-        )
-        annotator.run()
-    except Exception as e:
-        logging.error(str(e))
-        sys.exit(-1)
+    annotator = Annotator(
+        input_vcf=args.input_vcf,
+        output_vcf=args.output_vcf,
+        input_bams=bams,
+        mapping_qual_thr=args.mapping_quality,
+        base_call_qual_thr=args.base_call_quality,
+        purities=purities,
+        tumor_ploidies=tumor_ploidies,
+        normal_ploidy=int(args.normal_ploidy),
+        fpr=args.fpr,
+        error_rate=args.error_rate,
+        include_ambiguous_bases=args.include_ambiguous_bases,
+        num_processes=args.num_processes,
+    )
+    annotator.run()
+    
     logging.info("Vafator finished!")
 
 
@@ -120,16 +120,13 @@ def multiallelics_filter():
     args = parser.parse_args()
 
     logging.info("Vafator multiallelic filter starting...")
-    try:
-        filter = MultiallelicFilter(
-            input_vcf=args.input_vcf,
-            output_vcf=args.output_vcf,
-            tumor_sample_name=args.tumor_sample_name
-        )
-        filter.run()
-    except Exception as e:
-        logging.error(str(e))
-        sys.exit(-1)
+    filter = MultiallelicFilter(
+        input_vcf=args.input_vcf,
+        output_vcf=args.output_vcf,
+        tumor_sample_name=args.tumor_sample_name
+    )
+    filter.run()
+    
     logging.info("Vafator multiallelic filter finished!")
 
 

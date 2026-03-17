@@ -5,8 +5,17 @@ from cyvcf2 import Variant
 from pysam.libcalignmentfile import IteratorColumnRegion, AlignmentFile
 
 from vafator import AMBIGUOUS_BASES
-from vafator.tests.utils import VafatorVariant
 import numpy as np
+
+
+@dataclass
+class VariantRecord:
+    """Lightweight, picklable variant representation used by pileup workers.
+    Mirrors the cyvcf2.Variant fields accessed by pileup and metrics functions."""
+    CHROM: str
+    POS: int
+    REF: str
+    ALT: List[str]
 
 
 def is_snp(variant: Variant):
@@ -22,7 +31,7 @@ def is_deletion(variant: Variant):
 
 
 def get_variant_pileup(
-        variant: Union[Variant, VafatorVariant], bam: AlignmentFile,
+        variant: Union[Variant, VariantRecord], bam: AlignmentFile,
         min_base_quality, min_mapping_quality) -> IteratorColumnRegion:
     """Single-variant pileup, kept for backwards compatibility and tests."""
     position = variant.POS
@@ -178,9 +187,9 @@ def _get_snv_metrics_from_column(pileup_col, include_ambiguous_bases=False) -> C
     all_mqs = aggregate_list_per_base(bases, mapping_qualities)
     all_positions = aggregate_list_per_base(bases, query_positions)
 
-    bqs = Counter({b: np.median(l) for b, l in all_bqs.items()})
-    mqs = Counter({b: np.median(l) for b, l in all_mqs.items()})
-    positions = Counter({b: np.median(l) for b, l in all_positions.items()})
+    bqs = Counter({b: safe_median(l) for b, l in all_bqs.items()})
+    mqs = Counter({b: safe_median(l) for b, l in all_mqs.items()})
+    positions = Counter({b: safe_median(l) for b, l in all_positions.items()})
 
     ac = Counter(b for b in bases if b != "")
 
@@ -234,8 +243,8 @@ def _get_insertion_metrics_from_column(variant: Variant, pileup_col) -> Coverage
 
     return CoverageMetrics(
         ac=Counter(ac), dp=dp,
-        mqs=Counter({k: np.median(l) for k, l in mq.items()}),
-        positions=Counter({k: np.median(l) for k, l in pos.items()}),
+        mqs=Counter({k: safe_median(l) for k, l in mq.items()}),
+        positions=Counter({k: safe_median(l) for k, l in pos.items()}),
         bqs=Counter(),
         all_mqs={k: l for k, l in mq.items()},
         all_positions={k: l for k, l in pos.items()},
@@ -278,14 +287,14 @@ def _get_deletion_metrics_from_column(variant: Variant, pileup_col) -> CoverageM
 
     return CoverageMetrics(
         ac=Counter(ac), dp=dp,
-        mqs=Counter({k: np.median(l) for k, l in mq.items()}),
-        positions=Counter({k: np.median(l) for k, l in pos.items()}),
+        mqs=Counter({k: safe_median(l) for k, l in mq.items()}),
+        positions=Counter({k: safe_median(l) for k, l in pos.items()}),
         bqs=Counter(),
         all_mqs={k: l for k, l in mq.items()},
         all_positions={k: l for k, l in pos.items()},
         all_bqs=Counter()
     )
-
+ 
 def aggregate_list_per_base(bases, values) -> dict:
     aggregated_values = {}
     for b, v in zip(bases, values):
@@ -293,3 +302,8 @@ def aggregate_list_per_base(bases, values) -> dict:
             aggregated_values[b] = []
         aggregated_values[b].append(v)
     return aggregated_values
+ 
+ 
+def safe_median(values) -> float:
+    """Return median of values, or 0.0 for empty lists (avoids numpy RuntimeWarning)."""
+    return float(np.median(values)) if values else 0.0
