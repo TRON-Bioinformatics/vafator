@@ -1,12 +1,11 @@
-from collections import Counter, defaultdict
-from dataclasses import dataclass
-from typing import Union, List, Dict, Iterator, Tuple
-from cyvcf2 import Variant
-from pysam.libcalignmentfile import IteratorColumnRegion, AlignmentFile
-
-from vafator import AMBIGUOUS_BASES
 import numpy as np
-
+from collections import Counter, defaultdict
+from cyvcf2 import Variant
+from dataclasses import dataclass
+from math import nan
+from pysam.libcalignmentfile import IteratorColumnRegion, AlignmentFile
+from typing import Union, List, Dict, Iterator, Tuple
+from vafator import AMBIGUOUS_BASES
 
 @dataclass
 class VariantRecord:
@@ -306,4 +305,4 @@ def aggregate_list_per_base(bases, values) -> dict:
  
 def safe_median(values) -> float:
     """Return median of values, or 0.0 for empty lists (avoids numpy RuntimeWarning)."""
-    return float(np.median(values)) if values else 0.0
+    return float(np.median(values)) if values else nan
