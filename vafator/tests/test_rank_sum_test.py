@@ -21,6 +21,7 @@ class TestRankSumTest(TestCase):
         stat2, pvalue2 = calculate_rank_sum_test(distribution2, distribution1)
         self.assertGreater(stat2, 0.0)
         self.assertLess(pvalue2, 1.0)
+
         self.assertEqual(stat1, -stat2)
 
     def test_gatk_example(self):
@@ -51,13 +52,14 @@ class TestRankSumTest(TestCase):
     def test_get_rank_sum_tests_snv(self):
         variant = VariantRecord(CHROM='chr1', POS=100, REF='A', ALT=['T'])
         distributions = {
-            'A': [20, 25, 30, 35, 40],
-            'T': [1, 5, 10, 15, 20],
+            'A': [20, 25, 30, 35, 40],  # ref is higher
+            'T': [1, 5, 10, 15, 20],    # alt is lower
         }
         pvalues, stats = get_rank_sum_tests(distributions, variant)
         self.assertEqual(len(stats), 1)
         self.assertEqual(len(pvalues), 1)
-        self.assertGreater(float(stats[0]), 0.0)  # alt < ref so stat should be positive
+        # alt < ref so ranksums(alt, ref) returns negative stat
+        self.assertLess(float(stats[0]), 0.0)
 
     def test_get_rank_sum_tests_no_alt_reads(self):
         variant = VariantRecord(CHROM='chr1', POS=100, REF='A', ALT=['T'])

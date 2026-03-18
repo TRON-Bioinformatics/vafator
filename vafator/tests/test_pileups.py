@@ -64,33 +64,30 @@ class TestInsertionMetricsFromColumn(TestCase):
 
     def test_one_matching_insertion(self):
         # variant: A -> ATT at pos 100 (insertion of "TT", length 2)
-        # read: starts at 98, M2 then I2 of "TT" landing at pos 100
-        # CIGAR: [(0,2), (1,2)] — M2 advances ref to 100, then I2
         variant = VariantRecord(CHROM='chr1', POS=100, REF='A', ALT=['ATT'])
         read = _make_insertion_read(
             indel=2,
-            reference_start=98,
-            cigartuples=[(0, 2), (1, 2)],
-            query='AATT',  # query up to insertion point
+            reference_start=99,
+            cigartuples=[(0, 1), (1, 2)],
+            query='ATT',
             mapping_quality=60,
-            query_position_or_next=2
+            query_position_or_next=1
         )
         col = _make_pileup_col([read])
         metrics = _get_insertion_metrics_from_column(variant, col)
         self.assertEqual(metrics.dp, 1)
         self.assertEqual(metrics.ac['ATT'], 1)
-        self.assertEqual(metrics.mqs['ATT'], [60])
+        self.assertEqual(metrics.mqs['ATT'], 60.0)
 
     def test_insertion_wrong_sequence_not_counted(self):
-        # same position and length but different bases: "TC" instead of "TT"
         variant = VariantRecord(CHROM='chr1', POS=100, REF='A', ALT=['ATT'])
         read = _make_insertion_read(
             indel=2,
-            reference_start=98,
-            cigartuples=[(0, 2), (1, 2)],
-            query='AATC',
+            reference_start=99,
+            cigartuples=[(0, 1), (1, 2)],
+            query='ATC',
             mapping_quality=60,
-            query_position_or_next=2
+            query_position_or_next=1
         )
         col = _make_pileup_col([read])
         metrics = _get_insertion_metrics_from_column(variant, col)
@@ -98,15 +95,14 @@ class TestInsertionMetricsFromColumn(TestCase):
         self.assertEqual(metrics.ac['ATT'], 0)
 
     def test_insertion_wrong_length_not_counted(self):
-        # insertion of length 3 but variant expects length 2
         variant = VariantRecord(CHROM='chr1', POS=100, REF='A', ALT=['ATT'])
         read = _make_insertion_read(
             indel=3,
-            reference_start=98,
-            cigartuples=[(0, 2), (1, 3)],
-            query='AATTT',
+            reference_start=99,
+            cigartuples=[(0, 1), (1, 3)],
+            query='ATTT',
             mapping_quality=60,
-            query_position_or_next=2
+            query_position_or_next=1
         )
         col = _make_pileup_col([read])
         metrics = _get_insertion_metrics_from_column(variant, col)
@@ -119,14 +115,14 @@ class TestInsertionMetricsFromColumn(TestCase):
         metrics = _get_insertion_metrics_from_column(variant, col)
         self.assertEqual(metrics.dp, 1)
         self.assertEqual(metrics.ac['ATT'], 0)
-        self.assertEqual(metrics.mqs['A'], [55])
+        self.assertEqual(metrics.mqs['A'], 55.0)
 
     def test_mixed_insertion_and_ref_reads(self):
         variant = VariantRecord(CHROM='chr1', POS=100, REF='A', ALT=['ATT'])
         ins_read = _make_insertion_read(
-            indel=2, reference_start=98,
-            cigartuples=[(0, 2), (1, 2)],
-            query='AATT', mapping_quality=60, query_position_or_next=2
+            indel=2, reference_start=99,
+            cigartuples=[(0, 1), (1, 2)],
+            query='ATT', mapping_quality=60, query_position_or_next=1
         )
         ref_read = _make_ref_read(mapping_quality=55)
         col = _make_pileup_col([ins_read, ref_read])
@@ -160,7 +156,7 @@ class TestDeletionMetricsFromColumn(TestCase):
         metrics = _get_deletion_metrics_from_column(variant, col)
         self.assertEqual(metrics.dp, 1)
         self.assertEqual(metrics.ac['A'], 1)
-        self.assertEqual(metrics.mqs['A'], [60])
+        self.assertEqual(metrics.mqs['A'], 60.0)
 
     def test_deletion_wrong_length_not_counted(self):
         # deletion of length 3 but variant expects length 2
@@ -197,7 +193,7 @@ class TestDeletionMetricsFromColumn(TestCase):
         metrics = _get_deletion_metrics_from_column(variant, col)
         self.assertEqual(metrics.dp, 1)
         self.assertEqual(metrics.ac['A'], 0)
-        self.assertEqual(metrics.mqs['ATT'], [45])
+        self.assertEqual(metrics.mqs['ATT'], 45.0)
 
     def test_mixed_deletion_and_ref_reads(self):
         variant = VariantRecord(CHROM='chr1', POS=100, REF='ATT', ALT=['A'])
