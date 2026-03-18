@@ -6,7 +6,7 @@ import pysam
 
 from vafator.tests.utils import VafatorVariant
 from vafator.pileups import (
-    get_variant_pileup, get_metrics,
+    get_variant_pileup, _get_metrics_from_column,
     _get_insertion_metrics_from_column, _get_deletion_metrics_from_column,
 )
 from vafator.pileups import VariantRecord
@@ -266,11 +266,19 @@ class TestPileups(TestCase):
         variant = VafatorVariant(chromosome="chr1", position=1510035, reference="GCC", alternative=["G"])
         self._assert_metrics(variant=variant, expected_ac={'G': 12}, expected_dp=13)
 
-    def _assert_metrics(self, variant: VafatorVariant, expected_ac, expected_dp,
+    def _assert_metrics(self, variant, expected_ac, expected_dp,
                         min_base_quality=0, min_mapping_quality=0):
         pileups = get_variant_pileup(
             variant=variant, bam=self.bam_reader,
             min_base_quality=min_base_quality, min_mapping_quality=min_mapping_quality)
-        coverage_metrics = get_metrics(variant=variant, pileups=pileups)
-        self.assertEqual(expected_ac, coverage_metrics.ac)
-        self.assertEqual(expected_dp, coverage_metrics.dp)
+        pileup_col = next(iter(pileups), None)
+        if pileup_col is None:
+            coverage_metrics = None
+        else:
+            coverage_metrics = _get_metrics_from_column(
+                variant=variant, pileup_col=pileup_col, include_ambiguous_bases=True)
+        if expected_dp == 0:
+            self.assertIsNone(coverage_metrics)
+        else:
+            self.assertEqual(expected_ac, coverage_metrics.ac)
+            self.assertEqual(expected_dp, coverage_metrics.dp)
