@@ -48,7 +48,7 @@ def annotator():
                         help="False Positive Rate (FPR) to use in the power calculation")
     parser.add_argument("--error-rate", dest="error_rate", required=False, default=DEFAULT_ERROR_RATE, type=float,
                         help="Error rate to use in the power calculation")
-    parser.add_argument("--include-ambiguous-bases", dest="include_ambiguous_bases", action='store_true',
+    parser.add_argument("--exclude-ambiguous-bases", dest="exclude_ambiguous_bases", action='store_true',
                         help="Flag indicating to include ambiguous bases from the DP calculation")
     parser.add_argument("--num-processes", dest="num_processes", required=False, default=1, type=int,
                         help="Number of processes for parallel chromosome-level annotation (default: 1)")
@@ -100,7 +100,7 @@ def annotator():
         normal_ploidy=int(args.normal_ploidy),
         fpr=args.fpr,
         error_rate=args.error_rate,
-        include_ambiguous_bases=args.include_ambiguous_bases,
+        include_ambiguous_bases=(not args.exclude_ambiguous_bases),
         num_processes=args.num_processes,
     )
     annotator.run()
