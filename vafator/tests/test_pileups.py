@@ -25,9 +25,11 @@ def _make_insertion_read(indel, reference_start, cigartuples, query, mapping_qua
     read.indel = indel
     read.alignment.reference_start = reference_start
     read.alignment.cigartuples = cigartuples
-    read.alignment.query = query
     read.alignment.mapping_quality = mapping_quality
     read.query_position_or_next = query_position_or_next
+    # must set query as a real string on the spec — MagicMock slicing returns a MagicMock
+    # which silently fails string comparison
+    read.alignment.configure_mock(**{'query': query})
     return read
 
 
