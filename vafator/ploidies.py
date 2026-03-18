@@ -3,7 +3,7 @@ from typing import Union
 import pandas as pd
 from cyvcf2 import Variant
 
-from vafator.tests.utils import VafatorVariant
+from vafator.pileups import VariantRecord
 
 DEFAULT_PLOIDY = 2.0
 
@@ -20,7 +20,7 @@ class PloidyManager:
             if local_copy_numbers is not None else None
         self.ploidy = genome_wide_ploidy
 
-    def get_ploidy(self, variant: Union[Variant, VafatorVariant]) -> float:
+    def get_ploidy(self, variant: Union[Variant, VariantRecord]) -> float:
 
         result = self.ploidy
         if self.bed is not None:

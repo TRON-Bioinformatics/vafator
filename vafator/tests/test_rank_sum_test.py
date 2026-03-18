@@ -1,5 +1,7 @@
+from math import isnan
 from unittest import TestCase
-from vafator.rank_sum_test import calculate_rank_sum_test
+from vafator.rank_sum_test import calculate_rank_sum_test, get_rank_sum_tests
+from vafator.pileups import VariantRecord
 
 
 class TestRankSumTest(TestCase):
@@ -19,7 +21,6 @@ class TestRankSumTest(TestCase):
         stat2, pvalue2 = calculate_rank_sum_test(distribution2, distribution1)
         self.assertGreater(stat2, 0.0)
         self.assertLess(pvalue2, 1.0)
-
         self.assertEqual(stat1, -stat2)
 
     def test_gatk_example(self):
@@ -31,3 +32,36 @@ class TestRankSumTest(TestCase):
         stat, pvalue = calculate_rank_sum_test(alt_distribution, ref_distribution)
         self.assertEqual(stat, -2.154)
         self.assertEqual(pvalue, 0.03121)
+
+    def test_empty_alternate_returns_nan(self):
+        stat, pvalue = calculate_rank_sum_test([], [1, 2, 3])
+        self.assertTrue(isnan(stat))
+        self.assertTrue(isnan(pvalue))
+
+    def test_empty_reference_returns_nan(self):
+        stat, pvalue = calculate_rank_sum_test([1, 2, 3], [])
+        self.assertTrue(isnan(stat))
+        self.assertTrue(isnan(pvalue))
+
+    def test_both_empty_returns_nan(self):
+        stat, pvalue = calculate_rank_sum_test([], [])
+        self.assertTrue(isnan(stat))
+        self.assertTrue(isnan(pvalue))
+
+    def test_get_rank_sum_tests_snv(self):
+        variant = VariantRecord(CHROM='chr1', POS=100, REF='A', ALT=['T'])
+        distributions = {
+            'A': [20, 25, 30, 35, 40],
+            'T': [1, 5, 10, 15, 20],
+        }
+        pvalues, stats = get_rank_sum_tests(distributions, variant)
+        self.assertEqual(len(stats), 1)
+        self.assertEqual(len(pvalues), 1)
+        self.assertGreater(float(stats[0]), 0.0)  # alt < ref so stat should be positive
+
+    def test_get_rank_sum_tests_no_alt_reads(self):
+        variant = VariantRecord(CHROM='chr1', POS=100, REF='A', ALT=['T'])
+        distributions = {'A': [20, 25, 30]}  # no T reads
+        pvalues, stats = get_rank_sum_tests(distributions, variant)
+        self.assertEqual(stats, [])
+        self.assertEqual(pvalues, [])

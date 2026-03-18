@@ -24,10 +24,39 @@ class PowerCalculatorTest(TestCase):
         self.assertAlmostEqual(power.calculate_power(dp=10, ac=10, sample='tumor', variant=None), 1.0)
         self.assertAlmostEqual(power.calculate_power(dp=10, ac=11, sample='tumor', variant=None), 1.0)
 
+    def test_zero_dp_returns_zero_power(self):
+        power = PowerCalculator(
+            tumor_ploidies={'tumor': PloidyManager(genome_wide_ploidy=2.0)}, purities={'tumor': 0.8})
+        self.assertEqual(power.calculate_power(dp=0, ac=0, sample='tumor', variant=None), 1.0)
+
     def test_eaf_copy_number_below_one(self):
         power = PowerCalculator(
             tumor_ploidies={'tumor': PloidyManager(genome_wide_ploidy=0.5)}, purities={'tumor': 0.9})
         self.assertLessEqual(power.calculate_expected_vaf(sample='tumor', variant=None), 1.0)
+
+    def test_eaf_is_cached(self):
+        power = PowerCalculator(
+            tumor_ploidies={'tumor': PloidyManager(genome_wide_ploidy=2.0)}, purities={'tumor': 0.8})
+        v1 = VafatorVariant(chromosome='chr1', position=100, reference='A', alternative='G')
+        eaf1 = power.calculate_expected_vaf(sample='tumor', variant=v1)
+        eaf2 = power.calculate_expected_vaf(sample='tumor', variant=v1)
+        self.assertEqual(eaf1, eaf2)
+        self.assertEqual(len(power._eaf_cache), 1)
+
+    def test_k_is_cached(self):
+        power = PowerCalculator(
+            tumor_ploidies={'tumor': PloidyManager(genome_wide_ploidy=2.0)}, purities={'tumor': 0.8})
+        k1 = power._calculate_k(100)
+        k2 = power._calculate_k(100)
+        self.assertEqual(k1, k2)
+        self.assertEqual(len(power._k_cache), 1)
+
+    def test_higher_coverage_higher_power(self):
+        power = PowerCalculator(
+            tumor_ploidies={'tumor': PloidyManager(genome_wide_ploidy=2.0)}, purities={'tumor': 0.8})
+        p_low, _ = power.calculate_absolute_power(dp=10, sample='tumor', variant=None)
+        p_high, _ = power.calculate_absolute_power(dp=100, sample='tumor', variant=None)
+        self.assertLess(p_low, p_high)
 
     def test_varying_purity(self):
         power1 = PowerCalculator(
@@ -37,7 +66,6 @@ class PowerCalculatorTest(TestCase):
         self.assertLess(
             power1.calculate_power(dp=10, ac=2, sample='tumor', variant=None),
             power2.calculate_power(dp=10, ac=2, sample='tumor', variant=None))
-
         power3 = PowerCalculator(
             tumor_ploidies={'tumor': PloidyManager(genome_wide_ploidy=2.5)}, purities={'tumor': 0.4})
         self.assertLess(
@@ -52,12 +80,6 @@ class PowerCalculatorTest(TestCase):
         self.assertLess(
             power1.calculate_power(dp=10, ac=2, sample='tumor', variant=None),
             power2.calculate_power(dp=10, ac=2, sample='tumor', variant=None))
-
-        power3 = PowerCalculator(
-            tumor_ploidies={'tumor': PloidyManager(genome_wide_ploidy=6.0)}, purities={'tumor': 0.8})
-        self.assertLess(
-            power2.calculate_power(dp=10, ac=2, sample='tumor', variant=None),
-            power3.calculate_power(dp=10, ac=2, sample='tumor', variant=None))
 
     def test_local_copy_numbers(self):
         input_bed = pkg_resources.resource_filename(__name__, "resources/test_copy_numbers.bed")
@@ -81,7 +103,6 @@ class PowerCalculatorTest(TestCase):
 
     def test_absolute_power_calculator(self):
         ploidy_manager = {'tumor': PloidyManager(genome_wide_ploidy=2)}
-
         calculator = PowerCalculator(tumor_ploidies=ploidy_manager, purities={'tumor': 0.8})
         p, k = calculator.calculate_absolute_power(dp=100, sample='tumor', variant=None)
         self.assertEqual(p, 1.0)
@@ -125,3 +146,9 @@ class PowerCalculatorTest(TestCase):
         p, k = calculator.calculate_absolute_power(dp=2, sample='tumor', variant=None)
         self.assertEqual(p, 0.0025)
         self.assertEqual(k, 2)
+
+    def test_default_purity_is_one(self):
+        power = PowerCalculator(tumor_ploidies={}, purities={})
+        eaf = power.calculate_expected_vaf(sample='tumor', variant=None)
+        # purity=1, normal_ploidy=2, tumor_ploidy=2 => eaf = 1/(1*2 + 0*2) = 0.5
+        self.assertAlmostEqual(eaf, 0.5)

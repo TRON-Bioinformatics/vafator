@@ -1,5 +1,4 @@
 from unittest import TestCase
-
 import pkg_resources
 
 from vafator.tests.utils import VafatorVariant
@@ -29,13 +28,21 @@ class PloidyManagerTest(TestCase):
         # test non existing interval
         self.assertEqual(PloidyManager(local_copy_numbers=input_bed).get_ploidy(
             variant=VafatorVariant(chromosome="chr3", position=12345, reference="A", alternative="C")), 2.0)
-        # test lower boundary of interval
+
+    def test_interval_boundaries(self):
+        input_bed = pkg_resources.resource_filename(__name__, "resources/test_copy_numbers.bed")
+        # lower boundary — POS 10000 is 0-based 9999, outside interval start 10000
         self.assertEqual(PloidyManager(local_copy_numbers=input_bed).get_ploidy(
             variant=VafatorVariant(chromosome="chr1", position=10000, reference="A", alternative="C")), 2.0)
+        # just inside lower boundary
         self.assertEqual(PloidyManager(local_copy_numbers=input_bed).get_ploidy(
             variant=VafatorVariant(chromosome="chr1", position=10001, reference="A", alternative="C")), 1.2)
-        # test upper boundary of interval
+        # upper boundary
         self.assertEqual(PloidyManager(local_copy_numbers=input_bed).get_ploidy(
             variant=VafatorVariant(chromosome="chr1", position=20000, reference="A", alternative="C")), 1.2)
         self.assertEqual(PloidyManager(local_copy_numbers=input_bed).get_ploidy(
             variant=VafatorVariant(chromosome="chr1", position=20001, reference="A", alternative="C")), 2.1)
+
+    def test_invalid_bed_raises(self):
+        with self.assertRaises(ValueError):
+            PloidyManager(local_copy_numbers="/nonexistent/path.bed")

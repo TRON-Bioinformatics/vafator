@@ -1,10 +1,216 @@
 from collections import Counter
 from unittest import TestCase
+from unittest.mock import MagicMock
 import pkg_resources
 import pysam
 
 from vafator.tests.utils import VafatorVariant
-from vafator.pileups import get_variant_pileup, get_metrics
+from vafator.pileups import (
+    get_variant_pileup, get_metrics,
+    _get_insertion_metrics_from_column, _get_deletion_metrics_from_column,
+)
+from vafator.pileups import VariantRecord
+
+
+def _make_pileup_col(reads):
+    col = MagicMock()
+    col.pileups = reads
+    return col
+
+
+def _make_insertion_read(indel, reference_start, cigartuples, query, mapping_quality=60,
+                         query_position_or_next=0):
+    """Build a mock pileup read with an insertion (indel > 0)."""
+    read = MagicMock()
+    read.indel = indel
+    read.alignment.reference_start = reference_start
+    read.alignment.cigartuples = cigartuples
+    read.alignment.query = query
+    read.alignment.mapping_quality = mapping_quality
+    read.query_position_or_next = query_position_or_next
+    return read
+
+
+def _make_ref_read(mapping_quality=60, query_position_or_next=0):
+    """Build a mock pileup read with no indel (indel == 0), counted as reference."""
+    read = MagicMock()
+    read.indel = 0
+    read.alignment.mapping_quality = mapping_quality
+    read.query_position_or_next = query_position_or_next
+    return read
+
+
+def _make_deletion_read(indel, reference_start, cigartuples, mapping_quality=60,
+                        query_position_or_next=0):
+    """Build a mock pileup read with a deletion (indel < 0)."""
+    read = MagicMock()
+    read.indel = indel
+    read.alignment.reference_start = reference_start
+    read.alignment.cigartuples = cigartuples
+    read.alignment.mapping_quality = mapping_quality
+    read.query_position_or_next = query_position_or_next
+    return read
+
+
+class TestInsertionMetricsFromColumn(TestCase):
+    # CIGAR op codes: 0=M, 1=I, 2=D, 3=N, 4=S, 7==, 8=X
+
+    def test_no_reads(self):
+        variant = VariantRecord(CHROM='chr1', POS=100, REF='A', ALT=['ATT'])
+        col = _make_pileup_col([])
+        metrics = _get_insertion_metrics_from_column(variant, col)
+        self.assertEqual(metrics.dp, 0)
+        self.assertEqual(metrics.ac['ATT'], 0)
+
+    def test_one_matching_insertion(self):
+        # variant: A -> ATT at pos 100 (insertion of "TT", length 2)
+        # read: starts at 98, M2 then I2 of "TT" landing at pos 100
+        # CIGAR: [(0,2), (1,2)] — M2 advances ref to 100, then I2
+        variant = VariantRecord(CHROM='chr1', POS=100, REF='A', ALT=['ATT'])
+        read = _make_insertion_read(
+            indel=2,
+            reference_start=98,
+            cigartuples=[(0, 2), (1, 2)],
+            query='AATT',  # query up to insertion point
+            mapping_quality=60,
+            query_position_or_next=2
+        )
+        col = _make_pileup_col([read])
+        metrics = _get_insertion_metrics_from_column(variant, col)
+        self.assertEqual(metrics.dp, 1)
+        self.assertEqual(metrics.ac['ATT'], 1)
+        self.assertEqual(metrics.mqs['ATT'], [60])
+
+    def test_insertion_wrong_sequence_not_counted(self):
+        # same position and length but different bases: "TC" instead of "TT"
+        variant = VariantRecord(CHROM='chr1', POS=100, REF='A', ALT=['ATT'])
+        read = _make_insertion_read(
+            indel=2,
+            reference_start=98,
+            cigartuples=[(0, 2), (1, 2)],
+            query='AATC',
+            mapping_quality=60,
+            query_position_or_next=2
+        )
+        col = _make_pileup_col([read])
+        metrics = _get_insertion_metrics_from_column(variant, col)
+        self.assertEqual(metrics.dp, 1)
+        self.assertEqual(metrics.ac['ATT'], 0)
+
+    def test_insertion_wrong_length_not_counted(self):
+        # insertion of length 3 but variant expects length 2
+        variant = VariantRecord(CHROM='chr1', POS=100, REF='A', ALT=['ATT'])
+        read = _make_insertion_read(
+            indel=3,
+            reference_start=98,
+            cigartuples=[(0, 2), (1, 3)],
+            query='AATTT',
+            mapping_quality=60,
+            query_position_or_next=2
+        )
+        col = _make_pileup_col([read])
+        metrics = _get_insertion_metrics_from_column(variant, col)
+        self.assertEqual(metrics.ac['ATT'], 0)
+
+    def test_ref_reads_counted_in_mq(self):
+        variant = VariantRecord(CHROM='chr1', POS=100, REF='A', ALT=['ATT'])
+        ref_read = _make_ref_read(mapping_quality=55, query_position_or_next=30)
+        col = _make_pileup_col([ref_read])
+        metrics = _get_insertion_metrics_from_column(variant, col)
+        self.assertEqual(metrics.dp, 1)
+        self.assertEqual(metrics.ac['ATT'], 0)
+        self.assertEqual(metrics.mqs['A'], [55])
+
+    def test_mixed_insertion_and_ref_reads(self):
+        variant = VariantRecord(CHROM='chr1', POS=100, REF='A', ALT=['ATT'])
+        ins_read = _make_insertion_read(
+            indel=2, reference_start=98,
+            cigartuples=[(0, 2), (1, 2)],
+            query='AATT', mapping_quality=60, query_position_or_next=2
+        )
+        ref_read = _make_ref_read(mapping_quality=55)
+        col = _make_pileup_col([ins_read, ref_read])
+        metrics = _get_insertion_metrics_from_column(variant, col)
+        self.assertEqual(metrics.dp, 2)
+        self.assertEqual(metrics.ac['ATT'], 1)
+
+
+class TestDeletionMetricsFromColumn(TestCase):
+    # CIGAR op codes: 0=M, 2=D, 3=N, 7==, 8=X
+
+    def test_no_reads(self):
+        variant = VariantRecord(CHROM='chr1', POS=100, REF='ATT', ALT=['A'])
+        col = _make_pileup_col([])
+        metrics = _get_deletion_metrics_from_column(variant, col)
+        self.assertEqual(metrics.dp, 0)
+        self.assertEqual(metrics.ac['A'], 0)
+
+    def test_one_matching_deletion(self):
+        # variant: ATT -> A at pos 100 (deletion of length 2)
+        # read starts at 98, M2 advances to 100, D2 matches the deletion
+        variant = VariantRecord(CHROM='chr1', POS=100, REF='ATT', ALT=['A'])
+        read = _make_deletion_read(
+            indel=-2,
+            reference_start=98,
+            cigartuples=[(0, 2), (2, 2)],
+            mapping_quality=60,
+            query_position_or_next=2
+        )
+        col = _make_pileup_col([read])
+        metrics = _get_deletion_metrics_from_column(variant, col)
+        self.assertEqual(metrics.dp, 1)
+        self.assertEqual(metrics.ac['A'], 1)
+        self.assertEqual(metrics.mqs['A'], [60])
+
+    def test_deletion_wrong_length_not_counted(self):
+        # deletion of length 3 but variant expects length 2
+        variant = VariantRecord(CHROM='chr1', POS=100, REF='ATT', ALT=['A'])
+        read = _make_deletion_read(
+            indel=-3,
+            reference_start=98,
+            cigartuples=[(0, 2), (2, 3)],
+            mapping_quality=60,
+            query_position_or_next=2
+        )
+        col = _make_pileup_col([read])
+        metrics = _get_deletion_metrics_from_column(variant, col)
+        self.assertEqual(metrics.ac['A'], 0)
+
+    def test_deletion_wrong_position_not_counted(self):
+        # deletion starts at 99 not 100
+        variant = VariantRecord(CHROM='chr1', POS=100, REF='ATT', ALT=['A'])
+        read = _make_deletion_read(
+            indel=-2,
+            reference_start=98,
+            cigartuples=[(0, 1), (2, 2)],  # M1 advances to 99, not 100
+            mapping_quality=60,
+            query_position_or_next=1
+        )
+        col = _make_pileup_col([read])
+        metrics = _get_deletion_metrics_from_column(variant, col)
+        self.assertEqual(metrics.ac['A'], 0)
+
+    def test_ref_reads_counted_in_mq(self):
+        variant = VariantRecord(CHROM='chr1', POS=100, REF='ATT', ALT=['A'])
+        ref_read = _make_ref_read(mapping_quality=45, query_position_or_next=10)
+        col = _make_pileup_col([ref_read])
+        metrics = _get_deletion_metrics_from_column(variant, col)
+        self.assertEqual(metrics.dp, 1)
+        self.assertEqual(metrics.ac['A'], 0)
+        self.assertEqual(metrics.mqs['ATT'], [45])
+
+    def test_mixed_deletion_and_ref_reads(self):
+        variant = VariantRecord(CHROM='chr1', POS=100, REF='ATT', ALT=['A'])
+        del_read = _make_deletion_read(
+            indel=-2, reference_start=98,
+            cigartuples=[(0, 2), (2, 2)],
+            mapping_quality=60, query_position_or_next=2
+        )
+        ref_read = _make_ref_read(mapping_quality=55)
+        col = _make_pileup_col([del_read, ref_read])
+        metrics = _get_deletion_metrics_from_column(variant, col)
+        self.assertEqual(metrics.dp, 2)
+        self.assertEqual(metrics.ac['A'], 1)
 
 
 class TestPileups(TestCase):
