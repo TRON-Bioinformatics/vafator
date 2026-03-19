@@ -18,18 +18,29 @@ def _make_pileup_col(reads):
     return col
 
 
+class FakeAlignment:
+    def __init__(self, reference_start, cigartuples, mapping_quality, query=None,
+                 query_sequence=None, query_qualities=None):
+        self.reference_start = reference_start
+        self.cigartuples = cigartuples
+        self.mapping_quality = mapping_quality
+        self.query = query
+        self.query_sequence = query_sequence
+        self.query_qualities = query_qualities
+
+
 def _make_insertion_read(indel, reference_start, cigartuples, query, mapping_quality=60,
                          query_position_or_next=0):
     """Build a mock pileup read with an insertion (indel > 0)."""
     read = MagicMock()
     read.indel = indel
-    read.alignment.reference_start = reference_start
-    read.alignment.cigartuples = cigartuples
-    read.alignment.mapping_quality = mapping_quality
+    read.alignment = FakeAlignment(
+        reference_start=reference_start,
+        cigartuples=cigartuples,
+        query=query,
+        mapping_quality=mapping_quality,
+    )
     read.query_position_or_next = query_position_or_next
-    # must set query as a real string on the spec — MagicMock slicing returns a MagicMock
-    # which silently fails string comparison
-    read.alignment.configure_mock(**{'query': query})
     return read
 
 
@@ -37,7 +48,8 @@ def _make_ref_read(mapping_quality=60, query_position_or_next=0):
     """Build a mock pileup read with no indel (indel == 0), counted as reference."""
     read = MagicMock()
     read.indel = 0
-    read.alignment.mapping_quality = mapping_quality
+    read.alignment = FakeAlignment(
+        reference_start=0, cigartuples=[], mapping_quality=mapping_quality)
     read.query_position_or_next = query_position_or_next
     return read
 
@@ -47,9 +59,11 @@ def _make_deletion_read(indel, reference_start, cigartuples, mapping_quality=60,
     """Build a mock pileup read with a deletion (indel < 0)."""
     read = MagicMock()
     read.indel = indel
-    read.alignment.reference_start = reference_start
-    read.alignment.cigartuples = cigartuples
-    read.alignment.mapping_quality = mapping_quality
+    read.alignment = FakeAlignment(
+        reference_start=reference_start,
+        cigartuples=cigartuples,
+        mapping_quality=mapping_quality,
+    )
     read.query_position_or_next = query_position_or_next
     return read
 
