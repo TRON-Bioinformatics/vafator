@@ -263,24 +263,24 @@ class Annotator(object):
             i: 0-based index of the BAM within the sample's BAM list
             m: pre-computed CoverageMetrics for this variant in this BAM
         """
-        p = "{}_{}".format(s, i + 1)
-        v.INFO["{}_af".format(p)] = ",".join([str(self._calculate_af(m.ac[alt], m.dp)) for alt in v.ALT])
-        v.INFO["{}_ac".format(p)] = ",".join([str(m.ac[alt]) for alt in v.ALT])
-        v.INFO["{}_n".format(p)] = str(sum(m.ac.get(b, 0) for b in AMBIGUOUS_BASES))
-        v.INFO["{}_dp".format(p)] = m.dp
-        v.INFO["{}_pu".format(p)] = ",".join([str(self.power.calculate_power(ac=m.ac[alt], dp=m.dp, sample=s, variant=v)) for alt in v.ALT])
-        
+        n = i + 1
+        v.INFO["{}_af_{}".format(s, n)] = ",".join([str(self._calculate_af(m.ac[alt], m.dp)) for alt in v.ALT])
+        v.INFO["{}_ac_{}".format(s, n)] = ",".join([str(m.ac[alt]) for alt in v.ALT])
+        v.INFO["{}_n_{}".format(s, n)] = str(sum(m.ac.get(b, 0) for b in AMBIGUOUS_BASES))
+        v.INFO["{}_dp_{}".format(s, n)] = m.dp
+        v.INFO["{}_pu_{}".format(s, n)] = ",".join([str(self.power.calculate_power(ac=m.ac[alt], dp=m.dp, sample=s, variant=v)) for alt in v.ALT])
+
         power, k = self.power.calculate_absolute_power(dp=m.dp, sample=s, variant=v)
-        v.INFO["{}_pw".format(p)] = str(power)
-        v.INFO["{}_k".format(p)] = str(k)
-        v.INFO["{}_bq".format(p)] = ",".join([str(m.bqs[v.REF])] + [str(m.bqs[alt]) for alt in v.ALT])
-        v.INFO["{}_mq".format(p)] = ",".join([str(m.mqs[v.REF])] + [str(m.mqs[alt]) for alt in v.ALT])
-        v.INFO["{}_pos".format(p)] = ",".join([str(m.positions[v.REF])] + [str(m.positions[alt]) for alt in v.ALT])
+        v.INFO["{}_pw_{}".format(s, n)] = str(power)
+        v.INFO["{}_k_{}".format(s, n)] = str(k)
+        v.INFO["{}_bq_{}".format(s, n)] = ",".join([str(m.bqs[v.REF])] + [str(m.bqs[alt]) for alt in v.ALT])
+        v.INFO["{}_mq_{}".format(s, n)] = ",".join([str(m.mqs[v.REF])] + [str(m.mqs[alt]) for alt in v.ALT])
+        v.INFO["{}_pos_{}".format(s, n)] = ",".join([str(m.positions[v.REF])] + [str(m.positions[alt]) for alt in v.ALT])
         for key, tag in [(m.all_mqs, "rsmq"), (m.all_bqs, "rsbq"), (m.all_positions, "rspos")]:
             pvalues, stats = get_rank_sum_tests(key, v)
             if stats:
-                v.INFO["{}_{}_{}".format(s, tag, i + 1)] = ",".join(stats)
-                v.INFO["{}_{}_pv_{}".format(s, tag, i + 1)] = ",".join(pvalues)
+                v.INFO["{}_{}_{}".format(s, tag, n)] = ",".join(stats)
+                v.INFO["{}_{}_pv_{}".format(s, tag, n)] = ",".join(pvalues)
 
     def _annotate_sample(self, v: Variant, s: str, gac: Counter, gdp: int,
                          gbq: Counter, gmq: Counter, gpos: Counter,
