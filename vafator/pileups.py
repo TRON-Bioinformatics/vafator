@@ -1,67 +1,75 @@
-import numpy as np
 from collections import Counter, defaultdict
-from cyvcf2 import Variant
-from dataclasses import dataclass
-from math import nan
-from pysam.libcalignmentfile import IteratorColumnRegion, AlignmentFile
 from typing import Union, List, Dict, Iterator, Tuple
-from vafator import AMBIGUOUS_BASES
 
-@dataclass
-class VariantRecord:
-    """Lightweight, picklable variant representation used by pileup workers.
-    Mirrors the cyvcf2.Variant fields accessed by pileup and metrics functions."""
-    CHROM: str
-    POS: int
-    REF: str
-    ALT: List[str]
+from cyvcf2 import Variant
+from pysam.libcalignmentfile import IteratorColumnRegion, AlignmentFile
 
-
-def is_snp(variant: Variant):
-    return len(variant.REF) == 1 and len(variant.ALT[0]) == 1
-
-
-def is_insertion(variant: Variant):
-    return len(variant.REF) == 1 and len(variant.ALT[0]) > 1
-
-
-def is_deletion(variant: Variant):
-    return len(variant.ALT[0]) == 1 and len(variant.REF) > 1
-
+from vafator.constants import AMBIGUOUS_BASES
+from vafator.pileup_utils import *
 
 def get_variant_pileup(
         variant: Union[Variant, VariantRecord], bam: AlignmentFile,
-        min_base_quality, min_mapping_quality) -> IteratorColumnRegion:
-    """Single-variant pileup, kept for backwards compatibility and tests."""
+        min_base_quality: int, min_mapping_quality: int) -> IteratorColumnRegion:
+    """Open a pileup iterator at a single variant position.
+    Kept for backwards compatibility and use in tests.
+
+    Args:
+        variant: variant to query (cyvcf2 Variant or VariantRecord)
+        bam: open pysam AlignmentFile
+        min_base_quality: minimum base call quality; bases below this are excluded
+        min_mapping_quality: minimum mapping quality; reads below this are excluded
+
+    Returns:
+        pysam IteratorColumnRegion over the variant position
+    """
     position = variant.POS
-    return bam.pileup(contig=variant.CHROM, start=position - 1, stop=position,
-                      truncate=True,
-                      max_depth=1000000,
-                      min_base_quality=min_base_quality,
-                      min_mapping_quality=min_mapping_quality,
-                      stepper='samtools',
-                      )
+    return bam.pileup(
+        contig=variant.CHROM, 
+        start=position - 1, 
+        stop=position,
+        truncate=True, 
+        max_depth=1000000,
+        min_base_quality=min_base_quality,
+        min_mapping_quality=min_mapping_quality,
+        stepper='samtools'
+        )
 
 
 def get_region_pileup(chrom: str, start: int, end: int, bam: AlignmentFile,
-                      min_base_quality, min_mapping_quality):
+                      min_base_quality: int, min_mapping_quality: int):
+    """Open a single pileup iterator spanning a genomic region.
+
+    Args:
+        chrom: chromosome name
+        start: 0-based inclusive start position
+        end: 1-based exclusive end position (last variant POS)
+        bam: open pysam AlignmentFile
+        min_base_quality: minimum base call quality; bases below this are excluded
+        min_mapping_quality: minimum mapping quality; reads below this are excluded
+
+    Returns:
+        pysam pileup iterator over the region
     """
-    Opens a single pileup iterator spanning a whole region (e.g. one chromosome).
-    start is 0-based inclusive, end is 1-based exclusive (last variant POS).
-    """
-    return bam.pileup(contig=chrom, start=start, stop=end,
-                      truncate=True,
-                      max_depth=1000000,
-                      min_base_quality=min_base_quality,
-                      min_mapping_quality=min_mapping_quality,
-                      stepper='samtools',
-                      )
+    return bam.pileup(
+        contig=chrom, 
+        start=start, 
+        stop=end,
+        truncate=True, 
+        max_depth=1000000,
+        min_base_quality=min_base_quality,
+        min_mapping_quality=min_mapping_quality,
+        stepper='samtools'
+        )
 
 
 def stream_variants_by_chrom(vcf) -> Iterator[Tuple[str, List[Variant]]]:
-    """
-    Yields (chrom, [variants]) one chromosome at a time.
-    Only one chromosome's variants are held in memory at once.
+    """Yield variants grouped by chromosome, one chromosome at a time.
+
+    Args:
+        vcf: open cyvcf2 VCF iterator
+
+    Returns:
+        iterator of (chrom, [variants]) tuples
     """
     current_chrom = None
     current_variants = []
@@ -83,38 +91,45 @@ def collect_metrics_for_chrom(
         bam: AlignmentFile,
         min_base_quality: int,
         min_mapping_quality: int,
-        include_ambiguous_bases: bool = False) -> Dict[Tuple, 'CoverageMetrics']:
-    """
-    Opens ONE pileup iterator over the entire chromosome region covered by variants.
-    Metrics are computed IMMEDIATELY for each pileup column while it is still valid —
-    avoids segfaults from storing PileupColumn objects after the iterator advances.
+        include_ambiguous_bases: bool = False) -> Dict[Tuple, CoverageMetrics]:
+    """Compute pileup metrics for all variants on a chromosome using a single pileup iterator.
 
-    Returns {(pos, REF, ALT[0]): CoverageMetrics}.
+    Metrics are computed immediately for each pileup column while it is still valid —
+    avoids segfaults from storing PileupColumn C objects after the iterator advances.
+
+    Args:
+        chrom: chromosome name
+        variants: list of variants on this chromosome (must be sorted by position)
+        bam: open pysam AlignmentFile
+        min_base_quality: minimum base call quality threshold
+        min_mapping_quality: minimum mapping quality threshold
+        include_ambiguous_bases: if True, ambiguous bases are counted in depth
+
+    Returns:
+        {(pos, REF, ALT[0]): CoverageMetrics} for each variant with read support
     """
     if not variants:
         return {}
 
-    # index variants by 1-based position for O(1) lookup during streaming
-    variants_by_pos: Dict[int, List[Variant]] = defaultdict(list)
+    variants_by_pos: Dict[int, List] = defaultdict(list)
     for v in variants:
         variants_by_pos[v.POS].append(v)
 
     start = variants[0].POS - 1   # 0-based inclusive
     end = variants[-1].POS        # exclusive end for pysam
-
     results: Dict[Tuple, CoverageMetrics] = {}
 
     for pileup_col in get_region_pileup(
-            chrom=chrom, start=start, end=end,
-            bam=bam,
-            min_base_quality=min_base_quality,
-            min_mapping_quality=min_mapping_quality,
+        chrom=chrom, 
+        start=start, 
+        end=end, 
+        bam=bam,
+        min_base_quality=min_base_quality,
+        min_mapping_quality=min_mapping_quality
     ):
         ref_pos = pileup_col.reference_pos + 1  # convert to 1-based
         if ref_pos not in variants_by_pos:
             continue
-
-        # compute metrics NOW while pileup_col is still valid in C memory
         for variant in variants_by_pos[ref_pos]:
             metrics = _get_metrics_from_column(variant, pileup_col, include_ambiguous_bases)
             if metrics is not None:
@@ -123,35 +138,18 @@ def collect_metrics_for_chrom(
     return results
 
 
-@dataclass
-class CoverageMetrics:
-    # number supporting reads of each base, including the reference
-    ac: dict
-    # total depth of coverage
-    dp: int
-    # median base call quality of each base, including the reference
-    bqs: dict = None
-    # median mapping quality of each alternate base, including the reference
-    mqs: dict = None
-    # median position within the read of each alternate base, including the reference
-    positions: dict = None
-    # base call quality distribution of each base, including the reference
-    all_bqs: dict = None
-    # mapping quality distribution of each base, including the reference
-    all_mqs: dict = None
-    # position within the read distribution of each base, including the reference
-    all_positions: dict = None
+def _get_metrics_from_column(variant, pileup_col,
+                              include_ambiguous_bases: bool = True) -> CoverageMetrics:
+    """Dispatch pileup metrics computation based on variant type.
 
+    Args:
+        variant: Variant or VariantRecord being evaluated
+        pileup_col: pysam PileupColumn at the variant position
+        include_ambiguous_bases: if True, ambiguous bases are counted in depth
 
-EMPTY_METRICS = CoverageMetrics(
-    ac=Counter(), dp=0, bqs=Counter(), mqs=Counter(), positions=Counter(),
-    all_bqs={}, all_mqs={}, all_positions={}
-)
-
-
-def _get_metrics_from_column(variant: Variant, pileup_col,
-                              include_ambiguous_bases=False) -> 'CoverageMetrics':
-    """Dispatch to the right metrics function based on variant type."""
+    Returns:
+        CoverageMetrics for this variant, or None if the variant type is not supported
+    """
     if is_snp(variant):
         return _get_snv_metrics_from_column(pileup_col, include_ambiguous_bases)
     elif is_insertion(variant):
@@ -161,11 +159,18 @@ def _get_metrics_from_column(variant: Variant, pileup_col,
     return None
 
 
-def _get_snv_metrics_from_column(pileup_col, include_ambiguous_bases=False) -> CoverageMetrics:
-    bases = []
-    qualities = []
-    mapping_qualities = []
-    query_positions = []
+def _get_snv_metrics_from_column(pileup_col, include_ambiguous_bases: bool = True) -> CoverageMetrics:
+    """Compute SNV metrics from a pileup column.
+    Deletions at the position are represented as empty string bases and included in depth.
+
+    Args:
+        pileup_col: pysam PileupColumn at the SNV position
+        include_ambiguous_bases: if True, IUPAC ambiguous bases are counted in depth
+
+    Returns:
+        CoverageMetrics with ac, dp, bqs, mqs, positions and their distributions
+    """
+    bases, qualities, mapping_qualities, query_positions = [], [], [], []
 
     for read in pileup_col.pileups:
         if read.is_refskip:
@@ -203,7 +208,18 @@ def _get_snv_metrics_from_column(pileup_col, include_ambiguous_bases=False) -> C
     )
 
 
-def _get_insertion_metrics_from_column(variant: Variant, pileup_col) -> CoverageMetrics:
+def _get_insertion_metrics_from_column(variant, pileup_col) -> CoverageMetrics:
+    """Compute insertion metrics from a pileup column.
+    Checks both insertion length and sequence to count supporting reads.
+    Reads with no indel at this position are counted as reference support.
+
+    Args:
+        variant: Variant or VariantRecord with REF and ALT defining the insertion
+        pileup_col: pysam PileupColumn at the insertion position
+
+    Returns:
+        CoverageMetrics with ac, dp, mqs, positions (bqs is empty for indels)
+    """
     ac = {alt.upper(): 0 for alt in variant.ALT}
     mq = {alt.upper(): [] for alt in variant.ALT}
     mq[variant.REF] = []
@@ -251,7 +267,18 @@ def _get_insertion_metrics_from_column(variant: Variant, pileup_col) -> Coverage
     )
 
 
-def _get_deletion_metrics_from_column(variant: Variant, pileup_col) -> CoverageMetrics:
+def _get_deletion_metrics_from_column(variant, pileup_col) -> CoverageMetrics:
+    """Compute deletion metrics from a pileup column.
+    Checks both deletion length and position via CIGAR traversal to count supporting reads.
+    Reads with no indel at this position are counted as reference support.
+
+    Args:
+        variant: Variant or VariantRecord with REF and ALT defining the deletion
+        pileup_col: pysam PileupColumn at the deletion position
+
+    Returns:
+        CoverageMetrics with ac, dp, mqs, positions (bqs is empty for indels)
+    """
     ac = {alt.upper(): 0 for alt in variant.ALT}
     mq = {alt.upper(): [] for alt in variant.ALT}
     mq[variant.REF] = []
@@ -293,16 +320,3 @@ def _get_deletion_metrics_from_column(variant: Variant, pileup_col) -> CoverageM
         all_positions={k: l for k, l in pos.items()},
         all_bqs=Counter()
     )
- 
-def aggregate_list_per_base(bases, values) -> dict:
-    aggregated_values = {}
-    for b, v in zip(bases, values):
-        if b not in aggregated_values:
-            aggregated_values[b] = []
-        aggregated_values[b].append(v)
-    return aggregated_values
- 
- 
-def safe_median(values) -> float:
-    """Return median of values, or 0.0 for empty lists (avoids numpy RuntimeWarning)."""
-    return float(np.median(values)) if values else nan
