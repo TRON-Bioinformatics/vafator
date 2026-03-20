@@ -80,6 +80,12 @@ class PowerCalculatorTest(TestCase):
         self.assertLess(
             power1.calculate_power(dp=10, ac=2, sample='tumor', variant=None),
             power2.calculate_power(dp=10, ac=2, sample='tumor', variant=None))
+        
+        power3 = PowerCalculator(
+            tumor_ploidies={'tumor': PloidyManager(genome_wide_ploidy=6.0)}, purities={'tumor': 0.8})
+        self.assertLess(
+            power2.calculate_power(dp=10, ac=2, sample='tumor', variant=None),
+            power3.calculate_power(dp=10, ac=2, sample='tumor', variant=None))
 
     def test_local_copy_numbers(self):
         input_bed = pkg_resources.resource_filename(__name__, "resources/test_copy_numbers.bed")
