@@ -356,10 +356,12 @@ class Annotator(object):
             if len(bams) > 1:
                 for i, bam in enumerate(bams, start=1):
                     n = os.path.basename(bam).split(".")[0]
-                    sample_label = "{} {}".format(s, n)
                     for suffix, description, type, number in _REPLICATE_HEADER_TEMPLATES:
-                        headers.append(Annotator._make_header(suffix, description, type, number,
-                                                    sample=sample_label, index=i))
+                        headers.append(
+                            Annotator._make_header(
+                            suffix, description, type, number, sample=s, index=i
+                            )
+                        )
         return headers
 
     @staticmethod
