@@ -80,7 +80,7 @@ class PowerCalculatorTest(TestCase):
         self.assertLess(
             power1.calculate_power(dp=10, ac=2, sample='tumor', variant=None),
             power2.calculate_power(dp=10, ac=2, sample='tumor', variant=None))
-        
+
         power3 = PowerCalculator(
             tumor_ploidies={'tumor': PloidyManager(genome_wide_ploidy=6.0)}, purities={'tumor': 0.8})
         self.assertLess(

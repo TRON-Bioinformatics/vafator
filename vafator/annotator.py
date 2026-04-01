@@ -95,10 +95,10 @@ class Annotator(object):
         self.include_ambiguous_bases = include_ambiguous_bases
         self.num_processes = num_processes
         self.power = PowerCalculator(
-            normal_ploidy=normal_ploidy, 
-            tumor_ploidies=tumor_ploidies, 
+            normal_ploidy=normal_ploidy,
+            tumor_ploidies=tumor_ploidies,
             purities=purities,
-            error_rate=error_rate, 
+            error_rate=error_rate,
             fpr=fpr
         )
 
@@ -129,7 +129,7 @@ class Annotator(object):
         for a in Annotator._get_headers(input_bams):
             self.vcf.add_info_to_header(a)
         self.vcf_writer = Writer(output_vcf, self.vcf)
-        
+
         self.bam_paths = input_bams
         self.bam_readers = {s: [pysam.AlignmentFile(b, "rb") for b in bams] for s, bams in input_bams.items()}
 
@@ -351,28 +351,28 @@ class Annotator(object):
         """
         headers = []
         for s, bams in input_bams.items():
-            for suffix, description, type, number in _HEADER_TEMPLATES:
-                headers.append(Annotator._make_header(suffix, description, type, number, sample=s))
+            for suffix, description, typ, number in _HEADER_TEMPLATES:
+                headers.append(Annotator._make_header(suffix, description, typ, number, sample=s))
             if len(bams) > 1:
                 for i, bam in enumerate(bams, start=1):
                     n = os.path.basename(bam).split(".")[0]
-                    for suffix, description, type, number in _REPLICATE_HEADER_TEMPLATES:
+                    for suffix, description, typ, number in _REPLICATE_HEADER_TEMPLATES:
                         headers.append(
                             Annotator._make_header(
-                            suffix, description, type, number, sample=s, index=i
+                            suffix, description, typ, number, sample=s, index=i
                             )
                         )
         return headers
 
     @staticmethod
-    def _make_header(suffix: str, description: str, type: str, number: str,
+    def _make_header(suffix: str, description: str, typ: str, number: str,
                      sample: str, index: int = None) -> dict:
         """Build a single INFO header dict for cyvcf2's add_info_to_header.
 
         Args:
             suffix: annotation suffix (e.g. 'af', 'dp')
             description: description template with {sample} placeholder
-            type: VCF type string ('Float', 'Integer', 'String')
+            typ: VCF type string ('Float', 'Integer', 'String')
             number: VCF number string ('A', 'R', '1', etc.)
             sample: sample name to substitute into ID and description
             index: optional replicate index appended to the ID
@@ -380,7 +380,7 @@ class Annotator(object):
         Returns:
             dict with keys ID, Description, Type, Number suitable for cyvcf2's add_info_to_header
         """
-        id = "{}_{}".format(sample, suffix)
+        header_id = "{}_{}".format(sample, suffix)
         if index is not None:
-            id = "{}_{}".format(id, index)
-        return {'ID': id, 'Description': description.format(sample=sample), 'Type': type, 'Number': number}
+            header_id = "{}_{}".format(header_id, index)
+        return {'ID': header_id, 'Description': description.format(sample=sample), 'Type': typ, 'Number': number}

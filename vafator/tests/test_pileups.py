@@ -1,6 +1,5 @@
 from collections import Counter
 from unittest import TestCase
-from unittest.mock import MagicMock
 import pkg_resources
 import pysam
 

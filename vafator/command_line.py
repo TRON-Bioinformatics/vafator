@@ -104,7 +104,7 @@ def annotator():
         num_processes=args.num_processes,
     )
     annotator.run()
-    
+
     logging.info("Vafator finished!")
 
 

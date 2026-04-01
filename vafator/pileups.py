@@ -5,7 +5,7 @@ from cyvcf2 import Variant
 from pysam.libcalignmentfile import IteratorColumnRegion, AlignmentFile
 
 from vafator.constants import AMBIGUOUS_BASES
-from vafator.pileup_utils import *
+from vafator.pileup_utils import VariantRecord, CoverageMetrics, safe_median, aggregate_list_per_base, is_snp, is_insertion, is_deletion
 
 def get_variant_pileup(
         variant: Union[Variant, VariantRecord], bam: AlignmentFile,
@@ -24,10 +24,10 @@ def get_variant_pileup(
     """
     position = variant.POS
     return bam.pileup(
-        contig=variant.CHROM, 
-        start=position - 1, 
+        contig=variant.CHROM,
+        start=position - 1,
         stop=position,
-        truncate=True, 
+        truncate=True,
         max_depth=1000000,
         min_base_quality=min_base_quality,
         min_mapping_quality=min_mapping_quality,
@@ -51,10 +51,10 @@ def get_region_pileup(chrom: str, start: int, end: int, bam: AlignmentFile,
         pysam pileup iterator over the region
     """
     return bam.pileup(
-        contig=chrom, 
-        start=start, 
+        contig=chrom,
+        start=start,
         stop=end,
-        truncate=True, 
+        truncate=True,
         max_depth=1000000,
         min_base_quality=min_base_quality,
         min_mapping_quality=min_mapping_quality,
@@ -120,9 +120,9 @@ def collect_metrics_for_chrom(
     results: Dict[Tuple, CoverageMetrics] = {}
 
     for pileup_col in get_region_pileup(
-        chrom=chrom, 
-        start=start, 
-        end=end, 
+        chrom=chrom,
+        start=start,
+        end=end,
         bam=bam,
         min_base_quality=min_base_quality,
         min_mapping_quality=min_mapping_quality
