@@ -235,24 +235,27 @@ def _get_insertion_metrics_from_column(variant, pileup_col) -> CoverageMetrics:
 
     for pileup_read in pileup_reads:
         if pileup_read.indel > 0:
+            # read with an insertion
             index = pileup_read.alignment.reference_start
             relative_position = 0
             for cigar_type, cigar_length in pileup_read.alignment.cigartuples:
-                if cigar_type in [0, 2, 3, 7, 8]:
+                if cigar_type in [0, 2, 3, 7, 8]: # consumes reference M, D, N, =, X
                     index += cigar_length
                     if index > variant_position:
                         break
-                if cigar_type in [0, 1, 4, 7, 8]:
+                if cigar_type in [0, 1, 4, 7, 8]: # consumes query M, I, S, =, X
                     relative_position += cigar_length
-                if cigar_type == 1:
+                if cigar_type == 1: # does not count I
                     insertion_in_query = pileup_read.alignment.query[
                                          relative_position:relative_position + insertion_length]
                     if index == variant_position and cigar_length == insertion_length \
                             and insertion == insertion_in_query:
+                        # the read contains the insertion
                         ac[alt_upper] += 1
                         mq[alt_upper].append(pileup_read.alignment.mapping_quality)
                         pos[alt_upper].append(pileup_read.query_position_or_next)
         elif pileup_read.indel == 0:
+            # NOTE: considers all reads without indels to be the reference!
             mq[variant.REF].append(pileup_read.alignment.mapping_quality)
             pos[variant.REF].append(pileup_read.query_position_or_next)
 
@@ -295,7 +298,7 @@ def _get_deletion_metrics_from_column(variant, pileup_col) -> CoverageMetrics:
         if pileup_read.indel < 0:
             start = pileup_read.alignment.reference_start
             for cigar_type, cigar_length in pileup_read.alignment.cigartuples:
-                if cigar_type in [0, 3, 7, 8]:
+                if cigar_type in [0, 3, 7, 8]: # consumes reference M, N, =, X
                     start += cigar_length
                 elif cigar_type == 2:
                     if start == variant_position and cigar_length == deletion_length:
@@ -308,6 +311,7 @@ def _get_deletion_metrics_from_column(variant, pileup_col) -> CoverageMetrics:
                 if start > variant_position:
                     break
         elif pileup_read.indel == 0:
+            # NOTE: considers all reads without indels to be the reference!
             mq[variant.REF].append(pileup_read.alignment.mapping_quality)
             pos[variant.REF].append(pileup_read.query_position_or_next)
 
