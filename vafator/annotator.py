@@ -253,7 +253,7 @@ class Annotator(object):
             self._annotate_sample(variant, sample, global_ac, global_dp, global_bq,
                                   global_mq, global_pos, global_all_mqs, global_all_bqs,
                                   global_all_positions)
-            
+
     def _annotate_replicate(self, v: Variant, s: str, i: int, m) -> None:
         """Write per-replicate annotations — only called when multiple BAMs are provided for a sample.
 
@@ -355,7 +355,7 @@ class Annotator(object):
                 headers.append(Annotator._make_header(suffix, description, typ, number, sample=s))
             if len(bams) > 1:
                 for i, bam in enumerate(bams, start=1):
-                    n = os.path.basename(bam).split(".")[0]
+                    # n = os.path.basename(bam).split(".")[0]
                     for suffix, description, typ, number in _REPLICATE_HEADER_TEMPLATES:
                         headers.append(
                             Annotator._make_header(

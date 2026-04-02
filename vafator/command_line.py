@@ -126,7 +126,7 @@ def multiallelics_filter():
         tumor_sample_name=args.tumor_sample_name
     )
     filter.run()
-    
+
     logging.info("Vafator multiallelic filter finished!")
 
 
