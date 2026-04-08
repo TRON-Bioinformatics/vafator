@@ -5,11 +5,23 @@ from cyvcf2 import Variant
 from pysam.libcalignmentfile import IteratorColumnRegion, AlignmentFile
 
 from vafator.constants import AMBIGUOUS_BASES
-from vafator.pileup_utils import VariantRecord, CoverageMetrics, safe_median, aggregate_list_per_base, is_snp, is_insertion, is_deletion
+from vafator.pileup_utils import (
+    VariantRecord,
+    CoverageMetrics,
+    safe_median,
+    aggregate_list_per_base,
+    is_snp,
+    is_insertion,
+    is_deletion,
+)
+
 
 def get_variant_pileup(
-        variant: Union[Variant, VariantRecord], bam: AlignmentFile,
-        min_base_quality: int, min_mapping_quality: int) -> IteratorColumnRegion:
+    variant: Union[Variant, VariantRecord],
+    bam: AlignmentFile,
+    min_base_quality: int,
+    min_mapping_quality: int,
+) -> IteratorColumnRegion:
     """Open a pileup iterator at a single variant position.
     Kept for backwards compatibility and use in tests.
 
@@ -31,12 +43,18 @@ def get_variant_pileup(
         max_depth=1000000,
         min_base_quality=min_base_quality,
         min_mapping_quality=min_mapping_quality,
-        stepper='samtools'
-        )
+        stepper="samtools",
+    )
 
 
-def get_region_pileup(chrom: str, start: int, end: int, bam: AlignmentFile,
-                      min_base_quality: int, min_mapping_quality: int):
+def get_region_pileup(
+    chrom: str,
+    start: int,
+    end: int,
+    bam: AlignmentFile,
+    min_base_quality: int,
+    min_mapping_quality: int,
+):
     """Open a single pileup iterator spanning a genomic region.
 
     Args:
@@ -58,8 +76,8 @@ def get_region_pileup(chrom: str, start: int, end: int, bam: AlignmentFile,
         max_depth=1000000,
         min_base_quality=min_base_quality,
         min_mapping_quality=min_mapping_quality,
-        stepper='samtools'
-        )
+        stepper="samtools",
+    )
 
 
 def stream_variants_by_chrom(vcf) -> Iterator[Tuple[str, List[Variant]]]:
@@ -86,12 +104,13 @@ def stream_variants_by_chrom(vcf) -> Iterator[Tuple[str, List[Variant]]]:
 
 
 def collect_metrics_for_chrom(
-        chrom: str,
-        variants: List[Variant],
-        bam: AlignmentFile,
-        min_base_quality: int,
-        min_mapping_quality: int,
-        include_ambiguous_bases: bool = False) -> Dict[Tuple, CoverageMetrics]:
+    chrom: str,
+    variants: List[Variant],
+    bam: AlignmentFile,
+    min_base_quality: int,
+    min_mapping_quality: int,
+    include_ambiguous_bases: bool = False,
+) -> Dict[Tuple, CoverageMetrics]:
     """Compute pileup metrics for all variants on a chromosome using a single pileup iterator.
 
     Metrics are computed immediately for each pileup column while it is still valid —
@@ -115,8 +134,8 @@ def collect_metrics_for_chrom(
     for v in variants:
         variants_by_pos[v.POS].append(v)
 
-    start = variants[0].POS - 1   # 0-based inclusive
-    end = variants[-1].POS        # exclusive end for pysam
+    start = variants[0].POS - 1  # 0-based inclusive
+    end = variants[-1].POS  # exclusive end for pysam
     results: Dict[Tuple, CoverageMetrics] = {}
 
     for pileup_col in get_region_pileup(
@@ -125,21 +144,24 @@ def collect_metrics_for_chrom(
         end=end,
         bam=bam,
         min_base_quality=min_base_quality,
-        min_mapping_quality=min_mapping_quality
+        min_mapping_quality=min_mapping_quality,
     ):
         ref_pos = pileup_col.reference_pos + 1  # convert to 1-based
         if ref_pos not in variants_by_pos:
             continue
         for variant in variants_by_pos[ref_pos]:
-            metrics = _get_metrics_from_column(variant, pileup_col, include_ambiguous_bases)
+            metrics = _get_metrics_from_column(
+                variant, pileup_col, include_ambiguous_bases
+            )
             if metrics is not None:
                 results[(ref_pos, variant.REF, variant.ALT[0])] = metrics
 
     return results
 
 
-def _get_metrics_from_column(variant, pileup_col,
-                              include_ambiguous_bases: bool = True) -> CoverageMetrics:
+def _get_metrics_from_column(
+    variant, pileup_col, include_ambiguous_bases: bool = True
+) -> CoverageMetrics:
     """Dispatch pileup metrics computation based on variant type.
 
     Args:
@@ -159,7 +181,9 @@ def _get_metrics_from_column(variant, pileup_col,
     return None
 
 
-def _get_snv_metrics_from_column(pileup_col, include_ambiguous_bases: bool = True) -> CoverageMetrics:
+def _get_snv_metrics_from_column(
+    pileup_col, include_ambiguous_bases: bool = True
+) -> CoverageMetrics:
     """Compute SNV metrics from a pileup column.
     Deletions at the position are represented as empty string bases and included in depth.
 
@@ -203,8 +227,14 @@ def _get_snv_metrics_from_column(pileup_col, include_ambiguous_bases: bool = Tru
         dp = sum(1 for b in bases if b == "" or b not in AMBIGUOUS_BASES)
 
     return CoverageMetrics(
-        ac=ac, dp=dp, bqs=bqs, mqs=mqs, positions=positions,
-        all_bqs=all_bqs, all_mqs=all_mqs, all_positions=all_positions
+        ac=ac,
+        dp=dp,
+        bqs=bqs,
+        mqs=mqs,
+        positions=positions,
+        all_bqs=all_bqs,
+        all_mqs=all_mqs,
+        all_positions=all_positions,
     )
 
 
@@ -239,17 +269,21 @@ def _get_insertion_metrics_from_column(variant, pileup_col) -> CoverageMetrics:
             index = pileup_read.alignment.reference_start
             relative_position = 0
             for cigar_type, cigar_length in pileup_read.alignment.cigartuples:
-                if cigar_type in [0, 2, 3, 7, 8]: # consumes reference M, D, N, =, X
+                if cigar_type in [0, 2, 3, 7, 8]:  # consumes reference M, D, N, =, X
                     index += cigar_length
                     if index > variant_position:
                         break
-                if cigar_type in [0, 1, 4, 7, 8]: # consumes query M, I, S, =, X
+                if cigar_type in [0, 1, 4, 7, 8]:  # consumes query M, I, S, =, X
                     relative_position += cigar_length
-                if cigar_type == 1: # does not count I
+                if cigar_type == 1:  # does not count I
                     insertion_in_query = pileup_read.alignment.query[
-                                         relative_position:relative_position + insertion_length]
-                    if index == variant_position and cigar_length == insertion_length \
-                            and insertion == insertion_in_query:
+                        relative_position : relative_position + insertion_length
+                    ]
+                    if (
+                        index == variant_position
+                        and cigar_length == insertion_length
+                        and insertion == insertion_in_query
+                    ):
                         # the read contains the insertion
                         ac[alt_upper] += 1
                         mq[alt_upper].append(pileup_read.alignment.mapping_quality)
@@ -260,13 +294,14 @@ def _get_insertion_metrics_from_column(variant, pileup_col) -> CoverageMetrics:
             pos[variant.REF].append(pileup_read.query_position_or_next)
 
     return CoverageMetrics(
-        ac=Counter(ac), dp=dp,
+        ac=Counter(ac),
+        dp=dp,
         mqs=Counter({k: safe_median(l) for k, l in mq.items()}),
         positions=Counter({k: safe_median(l) for k, l in pos.items()}),
         bqs=Counter(),
         all_mqs={k: l for k, l in mq.items()},
         all_positions={k: l for k, l in pos.items()},
-        all_bqs=Counter()
+        all_bqs=Counter(),
     )
 
 
@@ -298,7 +333,7 @@ def _get_deletion_metrics_from_column(variant, pileup_col) -> CoverageMetrics:
         if pileup_read.indel < 0:
             start = pileup_read.alignment.reference_start
             for cigar_type, cigar_length in pileup_read.alignment.cigartuples:
-                if cigar_type in [0, 3, 7, 8]: # consumes reference M, N, =, X
+                if cigar_type in [0, 3, 7, 8]:  # consumes reference M, N, =, X
                     start += cigar_length
                 elif cigar_type == 2:
                     if start == variant_position and cigar_length == deletion_length:
@@ -316,11 +351,12 @@ def _get_deletion_metrics_from_column(variant, pileup_col) -> CoverageMetrics:
             pos[variant.REF].append(pileup_read.query_position_or_next)
 
     return CoverageMetrics(
-        ac=Counter(ac), dp=dp,
+        ac=Counter(ac),
+        dp=dp,
         mqs=Counter({k: safe_median(l) for k, l in mq.items()}),
         positions=Counter({k: safe_median(l) for k, l in pos.items()}),
         bqs=Counter(),
         all_mqs={k: l for k, l in mq.items()},
         all_positions={k: l for k, l in pos.items()},
-        all_bqs=Counter()
+        all_bqs=Counter(),
     )

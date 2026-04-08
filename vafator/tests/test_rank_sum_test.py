@@ -50,10 +50,10 @@ class TestRankSumTest(TestCase):
         self.assertTrue(isnan(pvalue))
 
     def test_get_rank_sum_tests_snv(self):
-        variant = VariantRecord(CHROM='chr1', POS=100, REF='A', ALT=['T'])
+        variant = VariantRecord(CHROM="chr1", POS=100, REF="A", ALT=["T"])
         distributions = {
-            'A': [20, 25, 30, 35, 40],  # ref is higher
-            'T': [1, 5, 10, 15, 20],    # alt is lower
+            "A": [20, 25, 30, 35, 40],  # ref is higher
+            "T": [1, 5, 10, 15, 20],  # alt is lower
         }
         pvalues, stats = get_rank_sum_tests(distributions, variant)
         self.assertEqual(len(stats), 1)
@@ -62,8 +62,8 @@ class TestRankSumTest(TestCase):
         self.assertLess(float(stats[0]), 0.0)
 
     def test_get_rank_sum_tests_no_alt_reads(self):
-        variant = VariantRecord(CHROM='chr1', POS=100, REF='A', ALT=['T'])
-        distributions = {'A': [20, 25, 30]}  # no T reads
+        variant = VariantRecord(CHROM="chr1", POS=100, REF="A", ALT=["T"])
+        distributions = {"A": [20, 25, 30]}  # no T reads
         pvalues, stats = get_rank_sum_tests(distributions, variant)
         self.assertEqual(stats, [])
         self.assertEqual(pvalues, [])

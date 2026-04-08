@@ -17,6 +17,7 @@ class VariantRecord:
         REF: reference allele
         ALT: list of alternate alleles
     """
+
     CHROM: str
     POS: int
     REF: str
@@ -37,6 +38,7 @@ class CoverageMetrics:
         all_mqs: full mapping quality distribution per allele
         all_positions: full read position distribution per allele
     """
+
     ac: dict
     dp: int
     bqs: dict = None
@@ -48,8 +50,14 @@ class CoverageMetrics:
 
 
 EMPTY_METRICS = CoverageMetrics(
-    ac=Counter(), dp=0, bqs=Counter(), mqs=Counter(), positions=Counter(),
-    all_bqs={}, all_mqs={}, all_positions={}
+    ac=Counter(),
+    dp=0,
+    bqs=Counter(),
+    mqs=Counter(),
+    positions=Counter(),
+    all_bqs={},
+    all_mqs={},
+    all_positions={},
 )
 
 

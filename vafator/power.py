@@ -7,19 +7,20 @@ from vafator.ploidies import default_ploidy_manager
 
 DEFAULT_PURITY = 1.0
 DEFAULT_NORMAL_PLOIDY = 2
-DEFAULT_FPR = 5*(10**-7)
+DEFAULT_FPR = 5 * (10**-7)
 DEFAULT_ERROR_RATE = 10**-3
 
 
 class PowerCalculator:
 
     def __init__(
-            self,
-            tumor_ploidies: dict,
-            purities: dict,
-            normal_ploidy: int = DEFAULT_NORMAL_PLOIDY,
-            fpr: float = DEFAULT_FPR,
-            error_rate: float = DEFAULT_ERROR_RATE):
+        self,
+        tumor_ploidies: dict,
+        purities: dict,
+        normal_ploidy: int = DEFAULT_NORMAL_PLOIDY,
+        fpr: float = DEFAULT_FPR,
+        error_rate: float = DEFAULT_ERROR_RATE,
+    ):
 
         self.normal_ploidy = normal_ploidy
         self.purities = purities
@@ -35,7 +36,9 @@ class PowerCalculator:
         # when using genome-wide ploidy (most common case) this is the same value for all variants
         self._eaf_cache: dict = {}
 
-    def calculate_power(self, dp: int, ac: int, sample: str, variant: Optional[Variant]) -> float:
+    def calculate_power(
+        self, dp: int, ac: int, sample: str, variant: Optional[Variant]
+    ) -> float:
         """
         Return the binomial probability of observing ac or less supporting reads, given a total coverage dp and a
         expected VAF tumor purity / 2.
@@ -55,13 +58,24 @@ class PowerCalculator:
         """
         # cache key: use variant position for local copy number lookups,
         # or just sample name when genome-wide ploidy is used (most common case)
-        cache_key = (sample, variant.CHROM if variant else None, variant.POS if variant else None)
+        cache_key = (
+            sample,
+            variant.CHROM if variant else None,
+            variant.POS if variant else None,
+        )
         if cache_key in self._eaf_cache:
             return self._eaf_cache[cache_key]
 
         purity = self.purities.get(sample, DEFAULT_PURITY)
-        tumor_ploidy = max(1, self.tumor_ploidies.get(sample, default_ploidy_manager).get_ploidy(variant=variant))
-        corrected_tumor_ploidy = purity * tumor_ploidy + ((1 - purity) * self.normal_ploidy)
+        tumor_ploidy = max(
+            1,
+            self.tumor_ploidies.get(sample, default_ploidy_manager).get_ploidy(
+                variant=variant
+            ),
+        )
+        corrected_tumor_ploidy = purity * tumor_ploidy + (
+            (1 - purity) * self.normal_ploidy
+        )
         expected_vaf = purity / corrected_tumor_ploidy
 
         self._eaf_cache[cache_key] = expected_vaf
@@ -109,5 +123,9 @@ class PowerCalculator:
         n = dp
         f = self.calculate_expected_vaf(sample, variant)
         # avoid instantiating a frozen binom distribution object — use module-level functions directly
-        power = 1 - binom.cdf(k=k - 1, n=n, p=f) + self._calculate_d(k=k, n=n) * binom.pmf(k=k, n=n, p=f)
+        power = (
+            1
+            - binom.cdf(k=k - 1, n=n, p=f)
+            + self._calculate_d(k=k, n=n) * binom.pmf(k=k, n=n, p=f)
+        )
         return round(power, 5), k
