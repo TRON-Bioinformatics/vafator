@@ -452,7 +452,7 @@ class Annotator(object):
                     Annotator._make_header(suffix, description, typ, number, sample=s)
                 )
             if len(bams) > 1:
-                for i, bam in enumerate(bams, start=1):
+                for i in range(1, len(bams) + 1):
                     # n = os.path.basename(bam).split(".")[0]
                     for suffix, description, typ, number in _REPLICATE_HEADER_TEMPLATES:
                         headers.append(
