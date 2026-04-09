@@ -72,10 +72,10 @@ class Annotator(object):
         input_vcf: str,
         output_vcf: str,
         input_bams: dict,
-        purities: dict = {},
+        purities: dict = None,
         mapping_qual_thr: int = 0,
         base_call_qual_thr: int = 29,
-        tumor_ploidies: dict = {},
+        tumor_ploidies: dict = None,
         normal_ploidy: int = 2,
         fpr: float = DEFAULT_FPR,
         error_rate: float = DEFAULT_ERROR_RATE,
@@ -97,6 +97,11 @@ class Annotator(object):
             include_ambiguous_bases: if True, ambiguous bases (N and IUPAC codes) are counted in DP
             num_processes: number of parallel processes for chromosome-level annotation (default: 1)
         """
+
+        if purities is None:
+            purities = {}
+        if tumor_ploidies is None:
+            tumor_ploidies = {}
 
         self.mapping_quality_threshold = mapping_qual_thr
         self.base_call_quality_threshold = base_call_qual_thr

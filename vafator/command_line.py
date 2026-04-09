@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import argparse
-import sys
 import logging
 import vafator
 from vafator.power import DEFAULT_FPR, DEFAULT_ERROR_RATE

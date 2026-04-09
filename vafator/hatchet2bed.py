@@ -3,12 +3,8 @@ import pandas as pd
 
 def run_hatchet2bed(input_file, output_prefix):
     input_df = pd.read_csv(input_file, sep="\t")
-    cn_columns = sorted(
-        list(filter(lambda c: c.startswith("cn_clone"), input_df.columns))
-    )
-    u_columns = sorted(
-        list(filter(lambda c: c.startswith("u_clone"), input_df.columns))
-    )
+    cn_columns = sorted([c for c in input_df.columns if c.startswith("cn_clone")])
+    u_columns = sorted([c for c in input_df.columns if c.startswith("u_clone")])
 
     for sample in input_df.SAMPLE.unique():
         data = []
@@ -18,7 +14,7 @@ def run_hatchet2bed(input_file, output_prefix):
             for cn_column, u_column in zip(cn_columns, u_columns):
                 u = float(row[u_column])
                 total_u += u
-                cn = sum(map(lambda c: float(c), row[cn_column].split("|")))
+                cn = sum(map(float, row[cn_column].split("|")))
                 numerator.append(u * cn)
             data.append(
                 [row["#CHR"], row["START"], row["END"], sum(numerator) / total_u]

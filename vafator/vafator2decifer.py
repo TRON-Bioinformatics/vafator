@@ -13,7 +13,6 @@ conda activate vcf_bedtools
 python vcf_2_decifer.py [OPTIONS]
 """
 
-import re
 import sys
 import pybedtools as pbt
 from cyvcf2 import VCF, Variant
@@ -21,7 +20,6 @@ import os
 import pandas as pd
 import numpy as np
 from collections import defaultdict
-import argparse
 
 
 def filterByDepthAndVaf(variant: Variant, Filter, samples):
@@ -179,10 +177,8 @@ def overlap_cna_snp(vcf_samples, max_CN, snps, out_dir):
             if filter_high_CN_sites(cn_info.keys(), max_CN):
                 # store results, converting from dict to a list for later printing
                 cna_info = []
-                [
+                for c in cn_info:
                     cna_info.extend([c.split("|")[0], c.split("|")[1], cn_info[c]])
-                    for c in cn_info
-                ]
                 cna_overlaps[char_label].append(cna_info)
             else:
                 filtered_sites.add(char_label)
