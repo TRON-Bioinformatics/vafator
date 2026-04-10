@@ -15,3 +15,5 @@ vafator/tests/resources/results
 .cache
 .jupyter
 .local
+run.sh
+VAFator.egg-info/*

@@ -3,7 +3,11 @@ import scipy.stats
 import numpy as np
 
 
-def calculate_rank_sum_test(alternate_dist: List[int], reference_dist: List[int]) -> Tuple[float, float]:
+def calculate_rank_sum_test(
+    alternate_dist: List[int], reference_dist: List[int]
+) -> Tuple[float, float]:
+    if not alternate_dist or not reference_dist:  # skip empty distributions
+        return np.nan, np.nan
     stat, pvalue = scipy.stats.ranksums(x=alternate_dist, y=reference_dist)
     return round(stat, 3), round(pvalue, 5)
 
@@ -14,10 +18,9 @@ def get_rank_sum_tests(distributions: dict, variant):
     for alt in variant.ALT:
         stat, pvalue = calculate_rank_sum_test(
             alternate_dist=distributions.get(alt, []),
-            reference_dist=distributions.get(variant.REF, []))
+            reference_dist=distributions.get(variant.REF, []),
+        )
         if not np.isnan(stat) and not np.isnan(pvalue):
             stats.append(str(stat))
             pvalues.append(str(pvalue))
     return pvalues, stats
-
-

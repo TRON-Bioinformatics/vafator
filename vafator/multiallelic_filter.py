@@ -16,7 +16,7 @@ class MultiallelicFilter(object):
 
     multiallelic_annotation_name = "multiallelic"
 
-    def __init__(self, input_vcf, output_vcf, tumor_sample_name='tumor'):
+    def __init__(self, input_vcf, output_vcf, tumor_sample_name="tumor"):
         """
         :param input_vcf: the input VCF file
         :param output_vcf: the file path of the output VCF
@@ -26,11 +26,20 @@ class MultiallelicFilter(object):
         # sets a line in the header with the command used to annotate the file
         self.vafator_header["input_vcf"] = input_vcf
         self.vafator_header["output_vcf"] = output_vcf
-        self.vcf.add_to_header("##vafator_command_line={}".format(json.dumps(self.vafator_header)))
+        self.vcf.add_to_header(
+            "##vafator_command_line={}".format(json.dumps(self.vafator_header))
+        )
         # adds to the header all the names of the annotations
-        self.vcf.add_info_to_header({'ID': self.multiallelic_annotation_name, 'Type': 'String', 'Number': '.',
-                 'Description': "Indicates multiallelic variants filtered and their frequencies if any (e.g.: T,0.12)"})
+        self.vcf.add_info_to_header(
+            {
+                "ID": self.multiallelic_annotation_name,
+                "Type": "String",
+                "Number": ".",
+                "Description": "Indicates multiallelic variants filtered and their frequencies if any (e.g.: T,0.12)",
+            }
+        )
         self.vcf_writer = Writer(output_vcf, self.vcf)
+        self.random = random.Random(42)
 
     def run(self):
         batch = []
@@ -41,8 +50,12 @@ class MultiallelicFilter(object):
                 prev_variant = variant
                 continue
             # considers only SNVs with same chromosome, position and reference
-            if variant.is_snp and variant.CHROM == prev_variant.CHROM and variant.POS == prev_variant.POS and \
-                    variant.REF == prev_variant.REF:
+            if (
+                variant.is_snp
+                and variant.CHROM == prev_variant.CHROM
+                and variant.POS == prev_variant.POS
+                and variant.REF == prev_variant.REF
+            ):
                 af1 = self.get_tumor_af(prev_variant)
                 af2 = self.get_tumor_af(variant)
                 # keeps the variant with the highest AF
@@ -55,8 +68,10 @@ class MultiallelicFilter(object):
                     # chooses a variant at random
                     alt1 = variant.ALT[0]
                     alt2 = prev_variant.ALT[0]
-                    prev_variant = random.sample([variant, prev_variant], k=1)[0]
-                    self.set_multiallelic_annotation(prev_variant, alt1 if alt1 != prev_variant.ALT[0] else alt2, af1)
+                    prev_variant = self.random.sample([variant, prev_variant], k=1)[0]
+                    self.set_multiallelic_annotation(
+                        prev_variant, alt1 if alt1 != prev_variant.ALT[0] else alt2, af1
+                    )
                 continue
 
             # write previous variant and stores current for next iteration
@@ -74,8 +89,10 @@ class MultiallelicFilter(object):
         self.vcf.close()
 
     def set_multiallelic_annotation(self, variant, alt, af):
-        variant.INFO[self.multiallelic_annotation_name] = \
-            ",".join(variant.INFO.get(self.multiallelic_annotation_name, "").split(",") + [alt, str(af)])
+        variant.INFO[self.multiallelic_annotation_name] = ",".join(
+            variant.INFO.get(self.multiallelic_annotation_name, "").split(",")
+            + [alt, str(af)]
+        )
 
     def get_tumor_af(self, prev_variant):
         return prev_variant.INFO.get("{}_af".format(self.tumor_sample_name), 0.0)
