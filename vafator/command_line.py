@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import logging
+from pathlib import Path
 import vafator
 from vafator.power import DEFAULT_FPR, DEFAULT_ERROR_RATE
 from vafator.hatchet2bed import run_hatchet2bed
@@ -10,6 +11,16 @@ from vafator.multiallelic_filter import MultiallelicFilter
 from vafator.vafator2decifer import run_vafator2decifer
 
 epilog = "Copyright (c) 2019-2021 TRON gGmbH (See LICENSE for licensing details)"
+
+
+def _validate_alignment_file_extension(alignment_file):
+    suffixes = [suffix.lower() for suffix in Path(alignment_file).suffixes]
+    if ".sam" in suffixes:
+        raise ValueError(
+            "SAM input is not supported: {}. Please provide BAM or CRAM files.".format(
+                alignment_file
+            )
+        )
 
 
 def annotator():
@@ -40,8 +51,8 @@ def annotator():
         nargs=2,
         metavar=("sample_name", "bam_file"),
         default=[],
-        help="A sample name and a BAM file. Can be used multiple times to input multiple samples and "
-        "multiple BAM files. The same sample name can be used multiple times with different BAMs, "
+        help="A sample name and a BAM/CRAM file. Can be used multiple times to input multiple samples and "
+        "multiple BAM/CRAM files. The same sample name can be used multiple times with different BAMs/CRAMs, "
         "this will treated as replicates.",
     )
     parser.add_argument(
@@ -127,6 +138,7 @@ def annotator():
 
     bams = {}
     for sample_name, bam in args.bam:
+        _validate_alignment_file_extension(bam)
         if sample_name in bams:
             bams[sample_name].append(bam)
         else:

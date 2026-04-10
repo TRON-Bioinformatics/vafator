@@ -52,7 +52,7 @@ def _collect_metrics_worker(
     ]
     for sample, bam_files in bam_paths.items():
         for i, bam_path in enumerate(bam_files):
-            bam = pysam.AlignmentFile(bam_path, "rb")
+            bam = pysam.AlignmentFile(bam_path, "r")
             all_metrics[(sample, i)] = collect_metrics_for_chrom(
                 chrom=chrom,
                 variants=variants,
@@ -159,7 +159,7 @@ class Annotator(object):
 
         self.bam_paths = input_bams
         self.bam_readers = {
-            s: [pysam.AlignmentFile(b, "rb") for b in bams]
+            s: [pysam.AlignmentFile(b, "r") for b in bams]
             for s, bams in input_bams.items()
         }
 
