@@ -39,6 +39,7 @@ class MultiallelicFilter(object):
             }
         )
         self.vcf_writer = Writer(output_vcf, self.vcf)
+        self.random = random.Random(42)
 
     def run(self):
         batch = []
@@ -67,7 +68,7 @@ class MultiallelicFilter(object):
                     # chooses a variant at random
                     alt1 = variant.ALT[0]
                     alt2 = prev_variant.ALT[0]
-                    prev_variant = random.sample([variant, prev_variant], k=1)[0]
+                    prev_variant = self.random.sample([variant, prev_variant], k=1)[0]
                     self.set_multiallelic_annotation(
                         prev_variant, alt1 if alt1 != prev_variant.ALT[0] else alt2, af1
                     )
